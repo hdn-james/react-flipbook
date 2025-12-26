@@ -1,0 +1,1446 @@
+/**
+ * React 3D Flipbook CSS
+ * Modern CSS3D flipbook with proper perspective and page flip animations
+ */
+
+/* Base container */
+.react-flipbook {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  box-sizing: border-box;
+}
+
+.react-flipbook-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: visible;
+}
+
+.react-flipbook-container {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  padding: 20px;
+  box-sizing: border-box;
+  /* Ensure 3D transforms are not clipped */
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+}
+
+/* 3D Book Container - This provides the perspective */
+.react-flipbook-book {
+  position: relative;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  perspective: 2000px;
+  -webkit-perspective: 2000px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  overflow: visible;
+}
+
+/* Book inner container for the spread */
+.react-flipbook-book-inner {
+  position: relative;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  overflow: visible;
+  transition:
+    box-shadow 0.4s ease-out,
+    width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Pages container */
+.react-flipbook-pages {
+  position: relative;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Two-page spread container */
+.react-flipbook-spread {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  overflow: visible;
+  transition: box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  background: transparent;
+}
+
+/* Single page spread classes - used for shadow styling */
+.react-flipbook-spread.single-page-right,
+.react-flipbook-spread.single-page-left {
+  /* Single page uses same container, page is centered via margin */
+  background: transparent;
+}
+
+/* Left page of the spread */
+.react-flipbook-spread-left {
+  position: relative;
+  height: 100%;
+  background: #fff;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  box-sizing: border-box;
+  transition:
+    flex 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease-out;
+}
+
+/* Right page of the spread */
+.react-flipbook-spread-right {
+  position: relative;
+  height: 100%;
+  background: #fff;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  box-sizing: border-box;
+  transition:
+    flex 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease-out;
+}
+
+/* Two-page spread shadow - open book effect */
+.react-flipbook-spread:not(.single-page-left):not(.single-page-right) {
+  box-shadow:
+    0 5px 30px rgba(0, 0, 0, 0.3),
+    0 10px 50px rgba(0, 0, 0, 0.15);
+}
+
+/* Single page spread shadow - closed book effect */
+.react-flipbook-spread.single-page-left,
+.react-flipbook-spread.single-page-right {
+  box-shadow:
+    0 3px 15px rgba(0, 0, 0, 0.2),
+    0 5px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Center spine shadow - only for open book */
+.react-flipbook-spine {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  margin-left: -4px;
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(0, 0, 0, 0.08) 20%,
+    rgba(0, 0, 0, 0.03) 40%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.03) 60%,
+    rgba(0, 0, 0, 0.08) 80%,
+    rgba(0, 0, 0, 0.15) 100%
+  );
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* Hide spine for single page spread */
+.react-flipbook-spread.single-page-left .react-flipbook-spine,
+.react-flipbook-spread.single-page-right .react-flipbook-spine {
+  display: none;
+}
+
+/* Individual page */
+.react-flipbook-page {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: #fff;
+}
+
+.react-flipbook-page.active {
+  z-index: 1;
+}
+
+/* 3D Flipping page container */
+.react-flipbook-flipping-page {
+  position: absolute;
+  width: 50%;
+  height: 100%;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  z-index: 1000;
+  pointer-events: none;
+  will-change: transform, box-shadow;
+  /* Smooth the 3D transformation */
+  -webkit-filter: blur(0);
+  filter: blur(0);
+  /* Ensure the flipping page is not clipped */
+  overflow: visible;
+  /* Add perspective to child elements for depth */
+  perspective: 1200px;
+  -webkit-perspective: 1200px;
+}
+
+/* Right page flip (turning forward) - spine is on the LEFT */
+.react-flipbook-flipping-page.flip-right {
+  left: 50%;
+  right: auto;
+  /* Transform origin at the LEFT edge (spine) - page rotates from spine */
+  transform-origin: left center;
+  -webkit-transform-origin: left center;
+}
+
+/* Left page flip (turning backward) - spine is on the RIGHT */
+.react-flipbook-flipping-page.flip-left {
+  left: auto;
+  right: 50%;
+  /* Transform origin at the RIGHT edge (spine) - page rotates from spine */
+  transform-origin: right center;
+  -webkit-transform-origin: right center;
+}
+
+/* Front face of flipping page */
+.react-flipbook-page-front,
+.react-flipbook-page-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+  background: #fff;
+  /* Add subtle inner shadow for page depth */
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.05);
+  /* Preserve 3D for proper curve rendering */
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+}
+
+/* Front page styling based on flip direction */
+.react-flipbook-flipping-page.flip-right .react-flipbook-page-front {
+  border-radius: 0 3px 3px 0;
+}
+
+.react-flipbook-flipping-page.flip-left .react-flipbook-page-front {
+  border-radius: 3px 0 0 3px;
+}
+
+.react-flipbook-page-back {
+  transform: rotateY(180deg);
+  -webkit-transform: rotateY(180deg);
+}
+
+/* Back page styling based on flip direction */
+.react-flipbook-flipping-page.flip-right .react-flipbook-page-back {
+  border-radius: 3px 0 0 3px;
+}
+
+.react-flipbook-flipping-page.flip-left .react-flipbook-page-back {
+  border-radius: 0 3px 3px 0;
+}
+
+/* Page gradient overlay for realism */
+.react-flipbook-page-front::after,
+.react-flipbook-page-back::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.03) 0%,
+    transparent 10%,
+    transparent 90%,
+    rgba(0, 0, 0, 0.02) 100%
+  );
+}
+
+/* Page content */
+.react-flipbook-page-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  border: none;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.react-flipbook-page-content img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+/* Page shadow effects - subtle inner shadows for page depth */
+.react-flipbook-page-shadow {
+  position: absolute;
+  top: 0;
+  width: 30px;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.react-flipbook-page-shadow-left {
+  right: 0;
+  left: auto;
+  background: linear-gradient(
+    to left,
+    rgba(0, 0, 0, 0.08) 0%,
+    transparent 100%
+  );
+}
+
+/* Hide page shadows for single page display */
+.react-flipbook-spread.single-page-left .react-flipbook-page-shadow,
+.react-flipbook-spread.single-page-right .react-flipbook-page-shadow {
+  display: none;
+}
+
+.react-flipbook-page-shadow-right {
+  left: 0;
+  right: auto;
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.08) 0%,
+    transparent 100%
+  );
+}
+
+/* Page flip animation */
+@keyframes flipToLeft {
+  0% {
+    transform: perspective(2000px) rotateY(0deg);
+  }
+  100% {
+    transform: perspective(2000px) rotateY(-180deg);
+  }
+}
+
+@keyframes flipToRight {
+  0% {
+    transform: perspective(2000px) rotateY(0deg);
+  }
+  100% {
+    transform: perspective(2000px) rotateY(180deg);
+  }
+}
+
+@keyframes flipFromLeft {
+  0% {
+    transform: perspective(2000px) rotateY(-180deg);
+  }
+  100% {
+    transform: perspective(2000px) rotateY(0deg);
+  }
+}
+
+@keyframes flipFromRight {
+  0% {
+    transform: perspective(2000px) rotateY(180deg);
+  }
+  100% {
+    transform: perspective(2000px) rotateY(0deg);
+  }
+}
+
+/* Flipping states */
+.react-flipbook-flipping-page.flipping-next {
+  animation: flipToLeft 0.6s ease-in-out forwards;
+}
+
+.react-flipbook-flipping-page.flipping-prev {
+  animation: flipToRight 0.6s ease-in-out forwards;
+}
+
+/* Dynamic shadow during flip - cast onto underlying pages */
+.react-flipbook-flip-shadow {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  border-radius: 2px;
+  z-index: 5;
+}
+
+/* Page curl overlay - creates the illusion of a curved page */
+.react-flipbook-page-curl-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: inherit;
+}
+
+/* Shadow cast on the book surface during flip */
+.react-flipbook-flipping-page::before {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 5%;
+  right: 5%;
+  height: 16px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0.25) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+/* Show shadow during active flip */
+.react-flipbook-flipping-page[style*="rotateY"]::before {
+  opacity: 1;
+}
+
+/* Inner page shadow for depth - appears on the spine side */
+.react-flipbook-flipping-page.flip-right .react-flipbook-page-front::before,
+.react-flipbook-flipping-page.flip-left .react-flipbook-page-front::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.react-flipbook-flipping-page.flip-right .react-flipbook-page-front::before {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.08) 0%,
+    transparent 100%
+  );
+}
+
+.react-flipbook-flipping-page.flip-left .react-flipbook-page-front::before {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    rgba(0, 0, 0, 0.08) 0%,
+    transparent 100%
+  );
+}
+
+.react-flipbook-flipping-page.flipping-next .react-flipbook-flip-shadow,
+.react-flipbook-flipping-page.flipping-prev .react-flipbook-flip-shadow {
+  animation: shadowFade 0.6s ease-in-out;
+}
+
+@keyframes shadowFade {
+  0% {
+    background: rgba(0, 0, 0, 0);
+  }
+  50% {
+    background: rgba(0, 0, 0, 0.3);
+  }
+  100% {
+    background: rgba(0, 0, 0, 0);
+  }
+}
+
+/* Book shadow on the surface */
+.react-flipbook-book::after {
+  content: "";
+  position: absolute;
+  bottom: -30px;
+  left: 10%;
+  right: 10%;
+  height: 30px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0.3) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* Hard cover styles */
+.react-flipbook-cover {
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+}
+
+.react-flipbook-cover .react-flipbook-page-front,
+.react-flipbook-cover .react-flipbook-page-back {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Menu/Toolbar styles */
+.react-flipbook-menu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 15px;
+  background: rgba(30, 30, 30, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.react-flipbook-menu-top {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.react-flipbook-menu-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.react-flipbook-menu-floating {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Button styles */
+.react-flipbook-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  font-size: 16px;
+}
+
+.react-flipbook-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+}
+
+.react-flipbook-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.react-flipbook-btn:disabled:hover {
+  background: transparent;
+  transform: none;
+}
+
+.react-flipbook-btn-active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Navigation buttons */
+.react-flipbook-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  width: 50px;
+  height: 80px;
+  border: none;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  font-size: 24px;
+}
+
+.react-flipbook-nav-btn:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.react-flipbook-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.react-flipbook-nav-prev {
+  left: 10px;
+  border-radius: 0 8px 8px 0;
+}
+
+.react-flipbook-nav-next {
+  right: 10px;
+  border-radius: 8px 0 0 8px;
+}
+
+/* Page indicator */
+.react-flipbook-page-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #fff;
+  font-size: 14px;
+}
+
+.react-flipbook-page-input {
+  width: 50px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+}
+
+.react-flipbook-page-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Sidebar styles */
+.react-flipbook-sidebar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  background: rgba(30, 30, 30, 0.98);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 5px 0 30px rgba(0, 0, 0, 0.3);
+}
+
+.react-flipbook-sidebar.open {
+  transform: translateX(0);
+}
+
+.react-flipbook-sidebar-left {
+  left: 0;
+}
+
+.react-flipbook-sidebar-right {
+  right: 0;
+  transform: translateX(100%);
+}
+
+.react-flipbook-sidebar-right.open {
+  transform: translateX(0);
+}
+
+.react-flipbook-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.react-flipbook-sidebar-title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.react-flipbook-sidebar-close {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 18px;
+}
+
+.react-flipbook-sidebar-close:hover {
+  opacity: 0.7;
+}
+
+.react-flipbook-sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+}
+
+/* Thumbnails */
+.react-flipbook-thumbnails {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.react-flipbook-thumbnail {
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.react-flipbook-thumbnail:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.react-flipbook-thumbnail.active {
+  border-color: #4a90d9;
+}
+
+.react-flipbook-thumbnail img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.react-flipbook-thumbnail-number {
+  text-align: center;
+  color: #fff;
+  font-size: 12px;
+  padding: 5px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Table of Contents */
+.react-flipbook-toc {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.react-flipbook-toc-item {
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.react-flipbook-toc-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.react-flipbook-toc-item-title {
+  color: #fff;
+  font-size: 14px;
+  margin: 0;
+}
+
+.react-flipbook-toc-item-page {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+}
+
+.react-flipbook-toc-children {
+  padding-left: 15px;
+  margin-top: 5px;
+}
+
+/* Search */
+.react-flipbook-search {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.react-flipbook-search-input-wrapper {
+  display: flex;
+  gap: 8px;
+}
+
+.react-flipbook-search-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 14px;
+}
+
+.react-flipbook-search-input:focus {
+  outline: none;
+  border-color: #4a90d9;
+}
+
+.react-flipbook-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.react-flipbook-search-btn {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 6px;
+  background: #4a90d9;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.react-flipbook-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.react-flipbook-search-result {
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.react-flipbook-search-result:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.react-flipbook-search-result-page {
+  font-size: 12px;
+  color: #4a90d9;
+  margin-bottom: 5px;
+}
+
+.react-flipbook-search-result-text {
+  color: #fff;
+  font-size: 13px;
+}
+
+.react-flipbook-search-result-text mark {
+  background: rgba(74, 144, 217, 0.3);
+  color: #fff;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+/* Bookmarks */
+.react-flipbook-bookmarks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.react-flipbook-bookmark {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.react-flipbook-bookmark:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.react-flipbook-bookmark-page {
+  color: #fff;
+  font-size: 14px;
+}
+
+.react-flipbook-bookmark-remove {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 5px;
+}
+
+.react-flipbook-bookmark-remove:hover {
+  color: #ff6b6b;
+}
+
+/* Loader */
+.react-flipbook-loader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 500;
+}
+
+.react-flipbook-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.react-flipbook-loader-text {
+  color: #fff;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+.react-flipbook-progress {
+  width: 200px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  margin-top: 15px;
+  overflow: hidden;
+}
+
+.react-flipbook-progress-bar {
+  height: 100%;
+  background: #4a90d9;
+  transition: width 0.3s ease;
+}
+
+/* Share menu */
+.react-flipbook-share-menu {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+}
+
+.react-flipbook-share-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #fff;
+  font-size: 18px;
+  transition: transform 0.2s ease;
+}
+
+.react-flipbook-share-btn:hover {
+  transform: scale(1.1);
+}
+
+.react-flipbook-share-whatsapp {
+  background: #25d366;
+}
+.react-flipbook-share-twitter {
+  background: #1da1f2;
+}
+.react-flipbook-share-facebook {
+  background: #1877f2;
+}
+.react-flipbook-share-linkedin {
+  background: #0a66c2;
+}
+.react-flipbook-share-pinterest {
+  background: #e60023;
+}
+.react-flipbook-share-email {
+  background: #666;
+}
+
+/* Print menu */
+.react-flipbook-print-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.react-flipbook-print-option {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  text-align: left;
+}
+
+.react-flipbook-print-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Overlay/Modal */
+.react-flipbook-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.react-flipbook-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.react-flipbook-modal {
+  background: #2a2a2a;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+}
+
+.react-flipbook-overlay.open .react-flipbook-modal {
+  transform: scale(1);
+}
+
+.react-flipbook-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.react-flipbook-modal-title {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.react-flipbook-modal-close {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 5px;
+}
+
+.react-flipbook-modal-close:hover {
+  opacity: 0.7;
+}
+
+/* Lightbox */
+.react-flipbook-lightbox {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.react-flipbook-lightbox.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.react-flipbook-lightbox-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Zoom indicator */
+.react-flipbook-zoom-indicator {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 150;
+}
+
+.react-flipbook-zoom-indicator.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Fullscreen mode */
+.react-flipbook.fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 9999;
+  border-radius: 0;
+  overflow: visible !important;
+}
+
+/* Theme: Light */
+.react-flipbook-theme-light .react-flipbook-menu {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.react-flipbook-theme-light .react-flipbook-btn {
+  color: #333;
+}
+
+.react-flipbook-theme-light .react-flipbook-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.react-flipbook-theme-light .react-flipbook-sidebar {
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.react-flipbook-theme-light .react-flipbook-sidebar-title,
+.react-flipbook-theme-light .react-flipbook-toc-item-title,
+.react-flipbook-theme-light .react-flipbook-bookmark-page {
+  color: #333;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .react-flipbook-menu {
+    padding: 8px 10px;
+  }
+
+  .react-flipbook-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .react-flipbook-nav-btn {
+    width: 40px;
+    height: 60px;
+    font-size: 20px;
+  }
+
+  .react-flipbook-sidebar {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .react-flipbook-thumbnails {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .react-flipbook-page-indicator {
+    font-size: 12px;
+  }
+
+  .react-flipbook-page-input {
+    width: 40px;
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+
+  /* Single page view on mobile */
+  .react-flipbook-spread-left,
+  .react-flipbook-spread-right {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .react-flipbook-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .react-flipbook-thumbnails {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Focus states for accessibility */
+.react-flipbook-btn:focus,
+.react-flipbook-nav-btn:focus,
+.react-flipbook-thumbnail:focus {
+  outline: 2px solid #4a90d9;
+  outline-offset: 2px;
+}
+
+.react-flipbook-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Page entrance animations */
+.react-flipbook-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.react-flipbook-slide-in-left {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.react-flipbook-slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* WebGL canvas styles */
+.react-flipbook-webgl-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* HTML layer for overlays on WebGL */
+.react-flipbook-html-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.react-flipbook-html-layer.interactive {
+  pointer-events: auto;
+}
+
+.react-flipbook-page-html-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+}
+
+/* Logo/branding */
+.react-flipbook-logo {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+}
+
+.react-flipbook-logo img {
+  max-height: 30px;
+  opacity: 0.5;
+  transition: opacity 0.3s;
+}
+
+.react-flipbook-logo img:hover {
+  opacity: 1;
+}
+
+/* Single page mode */
+.react-flipbook-single-page .react-flipbook-spread {
+  justify-content: center;
+}
+
+.react-flipbook-single-page .react-flipbook-spread-left {
+  width: 100%;
+  max-width: 50%;
+}
+
+.react-flipbook-single-page .react-flipbook-spread-right {
+  display: none;
+}
+
+.react-flipbook-single-page .react-flipbook-spine {
+  display: none;
+}
+
+/* Page number overlays */
+.react-flipbook-page-number {
+  position: absolute;
+  bottom: 10px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.4);
+  padding: 2px 8px;
+}
+
+.react-flipbook-spread-left .react-flipbook-page-number {
+  left: 10px;
+}
+
+.react-flipbook-spread-right .react-flipbook-page-number {
+  right: 10px;
+}
+
+/* Print styles */
+@media print {
+  .react-flipbook-menu,
+  .react-flipbook-nav-btn,
+  .react-flipbook-sidebar,
+  .react-flipbook-overlay,
+  .react-flipbook-loader {
+    display: none !important;
+  }
+
+  .react-flipbook {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .react-flipbook-page {
+    page-break-after: always;
+    position: relative !important;
+  }
+
+  .react-flipbook-page-content img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* View mode specific styles */
+.react-flipbook-view-2d .react-flipbook-book {
+  perspective: none;
+}
+
+.react-flipbook-view-css3d .react-flipbook-book {
+  perspective: 2000px;
+  -webkit-perspective: 2000px;
+}
+
+.react-flipbook-view-webgl .react-flipbook-container,
+.react-flipbook-view-3d .react-flipbook-container {
+  position: relative;
+}
+
+/* Empty page placeholder */
+.react-flipbook-page.empty {
+  background: #f5f5f5;
+}
+
+.react-flipbook-page.empty .react-flipbook-page-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-style: italic;
+}
