@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.2 (2025-12-27)
+
+### 🐛 Bug Fixes
+- fix(ci): npm (2d7e5f8)
+
+
 ## v1.1.1 (2025-12-27)
 
 ### ✨ Features
