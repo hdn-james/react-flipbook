@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.5 (2025-12-27)
+
+### 🐛 Bug Fixes
+- fix(ci): resolve publishser (0fc1c44)
+
+
 ## v1.1.4 (2025-12-27)
 
 
