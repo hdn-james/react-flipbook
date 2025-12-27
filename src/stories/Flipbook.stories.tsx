@@ -1,8 +1,12 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
+import * as pdfjsLib from "pdfjs-dist";
 import Flipbook from "../components/Flipbook";
 import type { FlipbookProps, FlipbookPage, FlipbookInstance } from "../types";
+
+// Set up PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.mjs`;
 
 // Sample page data for stories using picsum.photos (real images)
 const generateSamplePages = (count: number): FlipbookPage[] => {
@@ -164,18 +168,42 @@ This component uses WebGL (Three.js) for hardware-accelerated 3D rendering with 
       description: "Page material metalness",
       control: { type: "number", min: 0, max: 1, step: 0.1 },
     },
+    cameraZoom: {
+      description:
+        "Camera zoom/margin factor - higher values move camera further back",
+      control: { type: "number", min: 1, max: 2, step: 0.05 },
+    },
+    pageScale: {
+      description: "Base page scale in world units - affects overall page size",
+      control: { type: "number", min: 3, max: 10, step: 0.5 },
+    },
+    cameraPositionY: {
+      description: "Camera vertical position offset",
+      control: { type: "number", min: -3, max: 3, step: 0.1 },
+    },
+    cameraLookAtY: {
+      description: "Camera look-at Y position",
+      control: { type: "number", min: -2, max: 2, step: 0.1 },
+    },
+    cameraFov: {
+      description: "Field of view in degrees",
+      control: { type: "number", min: 20, max: 90, step: 5 },
+    },
     onPageFlip: {
       description: "Callback when page changes",
-      action: "pageFlip",
     },
     onZoomChange: {
       description: "Callback when zoom level changes",
-      action: "zoomChange",
     },
     onFullscreenChange: {
       description: "Callback when fullscreen mode changes",
-      action: "fullscreenChange",
     },
+  },
+  args: {
+    onReady: fn(),
+    onPageFlip: fn(),
+    onZoomChange: fn(),
+    onFullscreenChange: fn(),
   },
 };
 
@@ -207,7 +235,6 @@ export const Default: Story = {
     width: "834",
     height: "1112",
     skin: "dark",
-    onReady: fn(),
   },
   decorators: [withContainer],
 };
@@ -219,7 +246,6 @@ export const DarkTheme: Story = {
     height: 500,
     skin: "dark",
     backgroundColor: "rgb(30, 30, 30)",
-    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -238,7 +264,6 @@ export const LightTheme: Story = {
     height: 500,
     skin: "light",
     backgroundColor: "#f5f5f5",
-    onReady: fn(),
   },
 
   decorators: [withContainer],
@@ -265,7 +290,6 @@ export const GradientTheme: Story = {
     height: 500,
     skin: "gradient",
     backgroundColor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -288,7 +312,6 @@ export const SinglePageMode: Story = {
     height: 600,
     skin: "dark",
     singlePageMode: true,
-    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -327,7 +350,6 @@ export const RightToLeft: Story = {
     height: 500,
     skin: "dark",
     rightToLeft: true,
-    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -349,7 +371,6 @@ export const NoToolbar: Story = {
     height: 500,
     skin: "dark",
     hideMenu: true,
-    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -371,7 +392,6 @@ export const NoSideNavigation: Story = {
     height: 500,
     skin: "dark",
     sideNavigationButtons: false,
-    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -393,7 +413,6 @@ export const StartOnPage3: Story = {
     height: 500,
     skin: "dark",
     startPage: 3,
-    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -415,7 +434,6 @@ export const ManyPages: Story = {
     width: 800,
     height: 500,
     skin: "dark",
-    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -454,7 +472,6 @@ export const SquareFormat: Story = {
     height: 600,
     skin: "dark",
     singlePageMode: true,
-    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -484,7 +501,6 @@ export const WideFormat: Story = {
     width: 1200,
     height: 400,
     skin: "dark",
-    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -504,7 +520,6 @@ export const ResponsiveWidth: Story = {
     width: "100%",
     height: 500,
     skin: "dark",
-    onReady: fn(),
   },
   decorators: [
     (Story) => (
@@ -532,7 +547,6 @@ export const Minimal: Story = {
       { src: "https://picsum.photos/800/600?random=502", title: "Page 2" },
       { src: "https://picsum.photos/800/600?random=503", title: "Page 3" },
     ],
-    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -567,7 +581,6 @@ export const WithEmptyPages: Story = {
     width: 800,
     height: 500,
     skin: "dark",
-    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -590,7 +603,6 @@ export const WebGL3DMode: Story = {
     skin: "dark",
     shadows: true,
     lights: true,
-    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -626,7 +638,6 @@ export const WebGLCustomSettings: Story = {
     lightIntensity: 1.2,
     pageRoughness: 0.2,
     pageMetalness: 0.8,
-    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -654,7 +665,6 @@ export const WebGLNoShadows: Story = {
     skin: "dark",
     shadows: false,
     lights: true,
-    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -674,7 +684,6 @@ export const WebGLNoLights: Story = {
     skin: "dark",
     shadows: false,
     lights: false,
-    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -693,7 +702,6 @@ export const WebGLSinglePage: Story = {
     height: 600,
     skin: "dark",
     singlePageMode: true,
-    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -1072,6 +1080,801 @@ export const CustomBackgrounds: Story = {
     docs: {
       description: {
         story: "Different background colors for various use cases.",
+      },
+    },
+  },
+};
+
+// ============================================================================
+// PDF Support - Landscape and Portrait Pages (A4 Size)
+// ============================================================================
+
+// A4 Portrait PDF pages (595 x 842 points = 210mm x 297mm)
+const portraitPdfPages: FlipbookPage[] = [
+  {
+    src: "https://picsum.photos/595/842?random=201",
+    title: "Portrait Page 1",
+    width: 595,
+    height: 842,
+    orientation: "portrait",
+  },
+  {
+    src: "https://picsum.photos/595/842?random=202",
+    title: "Portrait Page 2",
+    width: 595,
+    height: 842,
+    orientation: "portrait",
+  },
+  {
+    src: "https://picsum.photos/595/842?random=203",
+    title: "Portrait Page 3",
+    width: 595,
+    height: 842,
+    orientation: "portrait",
+  },
+  {
+    src: "https://picsum.photos/595/842?random=204",
+    title: "Portrait Page 4",
+    width: 595,
+    height: 842,
+    orientation: "portrait",
+  },
+];
+
+// A4 Landscape PDF pages (842 x 595 points = 297mm x 210mm)
+const landscapePdfPages: FlipbookPage[] = [
+  {
+    src: "https://picsum.photos/842/595?random=301",
+    title: "Landscape Page 1",
+    width: 842,
+    height: 595,
+    orientation: "landscape",
+  },
+  {
+    src: "https://picsum.photos/842/595?random=302",
+    title: "Landscape Page 2",
+    width: 842,
+    height: 595,
+    orientation: "landscape",
+  },
+  {
+    src: "https://picsum.photos/842/595?random=303",
+    title: "Landscape Page 3",
+    width: 842,
+    height: 595,
+    orientation: "landscape",
+  },
+  {
+    src: "https://picsum.photos/842/595?random=304",
+    title: "Landscape Page 4",
+    width: 842,
+    height: 595,
+    orientation: "landscape",
+  },
+];
+
+export const PdfPortrait: Story = {
+  args: {
+    pages: portraitPdfPages,
+    width: 595,
+    height: 842,
+    skin: "dark",
+    singlePageMode: true,
+  },
+  decorators: [withContainer],
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Portrait PDF Pages (A4)**
+
+Demonstrates rendering portrait-oriented A4 PDF pages (210mm x 297mm).
+
+Each page specifies its own dimensions:
+\`\`\`typescript
+{
+  src: "page.png",
+  width: 595,   // A4 width in PDF points
+  height: 842,  // A4 height in PDF points
+  orientation: "portrait"
+}
+\`\`\`
+        `,
+      },
+    },
+  },
+};
+
+export const PdfLandscape: Story = {
+  args: {
+    pages: landscapePdfPages,
+    width: 842,
+    height: 595,
+    skin: "dark",
+    singlePageMode: true,
+  },
+  decorators: [withContainer],
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Landscape PDF Pages (A4)**
+
+Demonstrates rendering landscape-oriented A4 PDF pages (297mm x 210mm).
+
+Each page specifies its own dimensions:
+\`\`\`typescript
+{
+  src: "page.png",
+  width: 842,   // A4 landscape width in PDF points
+  height: 595,  // A4 landscape height in PDF points
+  orientation: "landscape"
+}
+\`\`\`
+        `,
+      },
+    },
+  },
+};
+
+export const PdfPortraitTwoPage: Story = {
+  args: {
+    pages: portraitPdfPages,
+    width: 1190,
+    height: 842,
+    skin: "light",
+    singlePageMode: false,
+  },
+  decorators: [withContainer],
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Portrait A4 PDF in Two-Page Spread Mode**
+
+Portrait A4 PDF pages displayed as a two-page spread (like an open book).
+This mode is ideal for documents designed for print viewing.
+Container width is 2x A4 width (595 x 2 = 1190) to show both pages.
+        `,
+      },
+    },
+  },
+};
+
+export const PdfLandscapeTwoPage: Story = {
+  args: {
+    pages: landscapePdfPages,
+    width: 1684,
+    height: 595,
+    skin: "light",
+    singlePageMode: false,
+  },
+  decorators: [withContainer],
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Landscape A4 PDF in Two-Page Spread Mode**
+
+Landscape A4 PDF pages displayed as a two-page spread.
+Useful for wide-format documents like presentations or blueprints.
+Container width is 2x A4 landscape width (842 x 2 = 1684).
+        `,
+      },
+    },
+  },
+};
+
+// ============================================================================
+// Actual PDF File Loading
+// ============================================================================
+
+// Helper function to convert PDF to FlipbookPages
+async function loadPdfAsPages(
+  pdfUrl: string,
+  scale: number = 2,
+): Promise<FlipbookPage[]> {
+  const loadingTask = pdfjsLib.getDocument(pdfUrl);
+  const pdf = await loadingTask.promise;
+  const pages: FlipbookPage[] = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale });
+
+    // Get original dimensions
+    const originalViewport = page.getViewport({ scale: 1 });
+
+    // Create canvas
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d")!;
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    // Render page to canvas
+    await page.render({
+      canvasContext: context,
+      viewport: viewport,
+    }).promise;
+
+    // Convert to data URL
+    const dataUrl = canvas.toDataURL("image/png");
+
+    pages.push({
+      src: dataUrl,
+      title: `Page ${i}`,
+      width: originalViewport.width,
+      height: originalViewport.height,
+      orientation:
+        originalViewport.width > originalViewport.height
+          ? "landscape"
+          : "portrait",
+    });
+
+    // Clean up
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+
+  return pages;
+}
+
+// Component that loads PDF and displays in Flipbook
+// Optimized for memory usage: uses JPEG compression, lower scale, and progressive loading
+/**
+ * Calculate container dimensions based on PDF page size
+ * Maintains aspect ratio while fitting within max constraints
+ */
+function calculateAutoSize(
+  pageWidth: number,
+  pageHeight: number,
+  singlePageMode: boolean,
+  maxWidth: number,
+  maxHeight: number,
+): { width: number; height: number } {
+  // In two-page mode, the container shows 2 pages side by side (unless landscape)
+  const isLandscape = pageWidth > pageHeight;
+  const effectiveWidth =
+    singlePageMode || isLandscape ? pageWidth : pageWidth * 2;
+  const effectiveHeight = pageHeight;
+
+  const aspectRatio = effectiveWidth / effectiveHeight;
+
+  // Calculate size to fit within max constraints while preserving aspect ratio
+  let containerWidth = maxWidth;
+  let containerHeight = containerWidth / aspectRatio;
+
+  // If height exceeds max, scale down based on height instead
+  if (containerHeight > maxHeight) {
+    containerHeight = maxHeight;
+    containerWidth = containerHeight * aspectRatio;
+  }
+
+  return {
+    width: Math.round(containerWidth),
+    height: Math.round(containerHeight),
+  };
+}
+
+const PdfFlipbookLoader: React.FC<{
+  pdfUrl: string;
+  singlePageMode?: boolean;
+  skin?: "dark" | "light" | "gradient";
+  width?: number;
+  height?: number;
+  autoSize?: boolean;
+  maxWidth?: number;
+  maxHeight?: number;
+  renderScale?: number;
+  imageQuality?: number;
+}> = ({
+  pdfUrl,
+  singlePageMode = true,
+  skin = "dark",
+  width,
+  height,
+  autoSize = true, // Enable auto-sizing by default
+  maxWidth = 1200, // Maximum container width
+  maxHeight = 900, // Maximum container height
+  renderScale = 1.5, // Lower scale = less memory (was 2)
+  imageQuality = 0.8, // JPEG quality (0-1)
+}) => {
+  const [pages, setPages] = useState<FlipbookPage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const pdfRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPdf() {
+      try {
+        setLoading(true);
+        setError(null);
+        setPages([]);
+
+        // Clean up previous PDF document
+        if (pdfRef.current) {
+          pdfRef.current.destroy();
+          pdfRef.current = null;
+        }
+
+        const loadingTask = pdfjsLib.getDocument({
+          url: pdfUrl,
+          // Disable font loading for faster parsing
+          disableFontFace: true,
+          // Use less memory for image decoding
+          isEvalSupported: false,
+        });
+
+        const pdf = await loadingTask.promise;
+        pdfRef.current = pdf;
+        setTotalPages(pdf.numPages);
+
+        const loadedPages: FlipbookPage[] = [];
+
+        // Load pages in batches to reduce memory pressure
+        const batchSize = 5;
+        for (let i = 1; i <= pdf.numPages; i++) {
+          if (cancelled) {
+            pdf.destroy();
+            return;
+          }
+
+          const page = await pdf.getPage(i);
+          const originalViewport = page.getViewport({ scale: 1 });
+          const viewport = page.getViewport({ scale: renderScale });
+
+          // Create canvas
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d", {
+            alpha: false, // No transparency = less memory
+            willReadFrequently: false,
+          })!;
+
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+
+          // Fill white background (required for JPEG)
+          context.fillStyle = "#ffffff";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Render page
+          await page.render({
+            canvasContext: context,
+            viewport: viewport,
+          }).promise;
+
+          // Use JPEG instead of PNG (much smaller file size)
+          const dataUrl = canvas.toDataURL("image/jpeg", imageQuality);
+
+          loadedPages.push({
+            src: dataUrl,
+            title: `Page ${i}`,
+            width: originalViewport.width,
+            height: originalViewport.height,
+            orientation:
+              originalViewport.width > originalViewport.height
+                ? "landscape"
+                : "portrait",
+          });
+
+          // Clean up canvas immediately
+          canvas.width = 0;
+          canvas.height = 0;
+
+          // Clean up page to free memory
+          page.cleanup();
+
+          setProgress(Math.round((i / pdf.numPages) * 100));
+
+          // Update pages progressively every batch
+          if (i % batchSize === 0 || i === pdf.numPages) {
+            if (!cancelled) {
+              setPages([...loadedPages]);
+            }
+          }
+
+          // Small delay to allow garbage collection
+          if (i % batchSize === 0 && i < pdf.numPages) {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+          }
+        }
+
+        if (!cancelled) {
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load PDF");
+          setLoading(false);
+        }
+      }
+    }
+
+    loadPdf();
+
+    return () => {
+      cancelled = true;
+      // Clean up PDF document on unmount
+      if (pdfRef.current) {
+        pdfRef.current.destroy();
+        pdfRef.current = null;
+      }
+    };
+  }, [pdfUrl, renderScale, imageQuality]);
+
+  // Show flipbook even while loading remaining pages (progressive)
+  if (loading && pages.length === 0) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 800,
+          height: 600,
+          backgroundColor: "#1a1a1a",
+          color: "#fff",
+          borderRadius: 8,
+        }}
+      >
+        <div style={{ marginBottom: 16, fontSize: 18 }}>Loading PDF...</div>
+        <div
+          style={{
+            width: 200,
+            height: 8,
+            backgroundColor: "#333",
+            borderRadius: 4,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              width: `${progress}%`,
+              height: "100%",
+              backgroundColor: "#4CAF50",
+              transition: "width 0.3s ease",
+            }}
+          />
+        </div>
+        <div style={{ marginTop: 8, fontSize: 14, color: "#888" }}>
+          {progress}%
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 800,
+          height: 600,
+          backgroundColor: "#1a1a1a",
+          color: "#ff6b6b",
+          borderRadius: 8,
+        }}
+      >
+        <div style={{ marginBottom: 8, fontSize: 18 }}>Error loading PDF</div>
+        <div style={{ fontSize: 14, color: "#888" }}>{error}</div>
+      </div>
+    );
+  }
+
+  if (pages.length === 0 && !loading) {
+    return <div>No pages found</div>;
+  }
+
+  // Show loading indicator if still loading
+  const isStillLoading = loading && pages.length > 0;
+
+  // Determine container size based on PDF page dimensions
+  const firstPage = pages[0];
+
+  // Calculate container dimensions
+  let containerWidth: number;
+  let containerHeight: number;
+
+  if (width !== undefined && height !== undefined) {
+    // If both width and height are explicitly provided, use them
+    containerWidth = width;
+    containerHeight = height;
+  } else if (autoSize && firstPage.width && firstPage.height) {
+    // Auto-size based on actual PDF page dimensions
+    const autoSized = calculateAutoSize(
+      firstPage.width,
+      firstPage.height,
+      singlePageMode,
+      maxWidth,
+      maxHeight,
+    );
+    containerWidth = width ?? autoSized.width;
+    containerHeight = height ?? autoSized.height;
+  } else {
+    // Fallback to orientation-based defaults
+    const isLandscape = firstPage.orientation === "landscape";
+    containerWidth = width ?? (isLandscape ? 900 : 600);
+    containerHeight = height ?? (isLandscape ? 600 : 800);
+  }
+
+  return (
+    <div style={{ position: "relative" }}>
+      <Flipbook
+        pages={pages}
+        width={containerWidth}
+        height={containerHeight}
+        skin={skin}
+        singlePageMode={singlePageMode}
+      />
+      {isStillLoading && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 60,
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "rgba(0,0,0,0.7)",
+            color: "#fff",
+            padding: "8px 16px",
+            borderRadius: 4,
+            fontSize: 12,
+          }}
+        >
+          Loading pages... {progress}% ({pages.length}/{totalPages})
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Wrapper component for Storybook args
+const PdfFlipbookStory: React.FC<{
+  pdfUrl: string;
+  singlePageMode: boolean;
+  skin: "dark" | "light" | "gradient";
+  autoSize?: boolean;
+  maxWidth?: number;
+  maxHeight?: number;
+  containerWidth?: number;
+  containerHeight?: number;
+  renderScale: number;
+  imageQuality: number;
+}> = ({
+  pdfUrl,
+  singlePageMode,
+  skin,
+  autoSize = true,
+  maxWidth = 1200,
+  maxHeight = 900,
+  containerWidth,
+  containerHeight,
+  renderScale,
+  imageQuality,
+}) => {
+  return (
+    <PdfFlipbookLoader
+      pdfUrl={pdfUrl}
+      singlePageMode={singlePageMode}
+      skin={skin}
+      autoSize={autoSize}
+      maxWidth={maxWidth}
+      maxHeight={maxHeight}
+      width={containerWidth}
+      height={containerHeight}
+      renderScale={renderScale}
+      imageQuality={imageQuality}
+    />
+  );
+};
+
+// Define args type for PDF stories
+type PdfStoryArgs = {
+  pdfUrl: string;
+  singlePageMode: boolean;
+  skin: "dark" | "light" | "gradient";
+  autoSize?: boolean;
+  maxWidth?: number;
+  maxHeight?: number;
+  containerWidth?: number;
+  containerHeight?: number;
+  renderScale: number;
+  imageQuality: number;
+};
+
+export const PdfLandscapeFile = {
+  args: {
+    pdfUrl: "http://127.0.0.1:8081/lanscape.pdf",
+    singlePageMode: true,
+    skin: "dark",
+    autoSize: true,
+    maxWidth: 1200,
+    maxHeight: 900,
+    renderScale: 1.5,
+    imageQuality: 0.8,
+  } as PdfStoryArgs,
+  argTypes: {
+    pdfUrl: {
+      description: "URL of the PDF file to load",
+      control: { type: "text" },
+    },
+    singlePageMode: {
+      description: "Display one page at a time",
+      control: { type: "boolean" },
+    },
+    skin: {
+      description: "Visual theme",
+      control: { type: "select" },
+      options: ["dark", "light", "gradient"],
+    },
+    autoSize: {
+      description: "Automatically size container based on PDF page dimensions",
+      control: { type: "boolean" },
+    },
+    maxWidth: {
+      description: "Maximum container width when auto-sizing (pixels)",
+      control: { type: "range", min: 400, max: 1600, step: 50 },
+    },
+    maxHeight: {
+      description: "Maximum container height when auto-sizing (pixels)",
+      control: { type: "range", min: 300, max: 1200, step: 50 },
+    },
+    renderScale: {
+      description: "PDF rendering scale (higher = sharper but more memory)",
+      control: { type: "range", min: 0.5, max: 3, step: 0.25 },
+    },
+    imageQuality: {
+      description: "JPEG quality for page images (0-1)",
+      control: { type: "range", min: 0.3, max: 1, step: 0.1 },
+    },
+  },
+  render: (args: PdfStoryArgs) => <PdfFlipbookStory {...args} />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Loading Landscape PDF Files**
+
+This example loads a landscape-oriented PDF file. You can change the PDF URL in the controls panel.
+
+**Default URLs for testing:**
+- Landscape: \`http://127.0.0.1:8081/lanscape.pdf\`
+- Portrait: \`http://127.0.0.1:8081/portrait.pdf\`
+
+Try changing the URL to test different PDF files!
+        `,
+      },
+    },
+  },
+};
+
+export const PdfPortraitFile = {
+  args: {
+    pdfUrl: "http://127.0.0.1:8081/portrait.pdf",
+    singlePageMode: true,
+    skin: "dark",
+    autoSize: true,
+    maxWidth: 1200,
+    maxHeight: 900,
+    renderScale: 1.5,
+    imageQuality: 0.8,
+  } as PdfStoryArgs,
+  argTypes: {
+    pdfUrl: {
+      description: "URL of the PDF file to load",
+      control: { type: "text" },
+    },
+    singlePageMode: {
+      description: "Display one page at a time",
+      control: { type: "boolean" },
+    },
+    skin: {
+      description: "Visual theme",
+      control: { type: "select" },
+      options: ["dark", "light", "gradient"],
+    },
+    autoSize: {
+      description: "Automatically size container based on PDF page dimensions",
+      control: { type: "boolean" },
+    },
+    maxWidth: {
+      description: "Maximum container width when auto-sizing (pixels)",
+      control: { type: "range", min: 400, max: 1600, step: 50 },
+    },
+    maxHeight: {
+      description: "Maximum container height when auto-sizing (pixels)",
+      control: { type: "range", min: 300, max: 1200, step: 50 },
+    },
+    renderScale: {
+      description: "PDF rendering scale (higher = sharper but more memory)",
+      control: { type: "range", min: 0.5, max: 3, step: 0.25 },
+    },
+    imageQuality: {
+      description: "JPEG quality for page images (0-1)",
+      control: { type: "range", min: 0.3, max: 1, step: 0.1 },
+    },
+  },
+  render: (args: PdfStoryArgs) => <PdfFlipbookStory {...args} />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Loading Portrait PDF Files**
+
+This example loads a portrait-oriented PDF file. You can change the PDF URL in the controls panel.
+        `,
+      },
+    },
+  },
+};
+
+export const PdfTwoPageSpread = {
+  args: {
+    pdfUrl: "http://127.0.0.1:8081/portrait.pdf",
+    singlePageMode: false,
+    skin: "dark",
+    autoSize: true,
+    maxWidth: 1200,
+    maxHeight: 900,
+    renderScale: 1.5,
+    imageQuality: 0.8,
+  } as PdfStoryArgs,
+  argTypes: {
+    pdfUrl: {
+      description: "URL of the PDF file to load",
+      control: { type: "text" },
+    },
+    singlePageMode: {
+      description: "Display one page at a time",
+      control: { type: "boolean" },
+    },
+    skin: {
+      description: "Visual theme",
+      control: { type: "select" },
+      options: ["dark", "light", "gradient"],
+    },
+    autoSize: {
+      description: "Automatically size container based on PDF page dimensions",
+      control: { type: "boolean" },
+    },
+    maxWidth: {
+      description: "Maximum container width when auto-sizing (pixels)",
+      control: { type: "range", min: 400, max: 1600, step: 50 },
+    },
+    maxHeight: {
+      description: "Maximum container height when auto-sizing (pixels)",
+      control: { type: "range", min: 300, max: 1200, step: 50 },
+    },
+    renderScale: {
+      description: "PDF rendering scale (higher = sharper but more memory)",
+      control: { type: "range", min: 0.5, max: 3, step: 0.25 },
+    },
+    imageQuality: {
+      description: "JPEG quality for page images (0-1)",
+      control: { type: "range", min: 0.3, max: 1, step: 0.1 },
+    },
+  },
+  render: (args: PdfStoryArgs) => <PdfFlipbookStory {...args} />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**PDF in Two-Page Spread Mode**
+
+PDF displayed as a two-page book spread.
+This is ideal for documents designed to be viewed as an open book.
+
+You can change the PDF URL to test with different files:
+- Portrait: \`http://127.0.0.1:8081/portrait.pdf\`
+- Landscape: \`http://127.0.0.1:8081/lanscape.pdf\`
+        `,
       },
     },
   },

@@ -113,6 +113,11 @@ const Flipbook = forwardRef<FlipbookInstance, FlipbookProps>(
       pageRoughness = 0.8,
       pageMetalness = 0.1,
       antialias = true,
+      cameraZoom = 1.35,
+      pageScale = 6,
+      cameraPositionY = 0,
+      cameraLookAtY = 0,
+      cameraFov = 45,
       btnFirst,
       btnPrev,
       btnNext,
@@ -344,6 +349,11 @@ const Flipbook = forwardRef<FlipbookInstance, FlipbookProps>(
               pageMetalness={pageMetalness}
               antialias={antialias}
               backgroundColor={backgroundColor}
+              cameraZoom={cameraZoom}
+              pageScale={pageScale}
+              cameraPositionY={cameraPositionY}
+              cameraLookAtY={cameraLookAtY}
+              cameraFov={cameraFov}
               onFlipStart={handleWebGLFlipStart}
               onFlipEnd={handleWebGLFlipEnd}
               onPageChange={handleWebGLPageChange}

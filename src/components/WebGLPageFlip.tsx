@@ -5,6 +5,7 @@ import {
   useEffect,
   useCallback,
   useState,
+  useMemo,
 } from "react";
 import * as THREE from "three";
 import type { FlipbookPage } from "../types";
@@ -29,6 +30,16 @@ export interface WebGLPageFlipProps {
   pageMetalness?: number;
   antialias?: boolean;
   backgroundColor?: string;
+  /** Camera zoom/margin factor - higher values move camera further back (default: 1.35) */
+  cameraZoom?: number;
+  /** Base page scale in world units - affects overall page size (default: 6) */
+  pageScale?: number;
+  /** Camera vertical position offset (default: 0) */
+  cameraPositionY?: number;
+  /** Camera look-at Y position (default: 0) */
+  cameraLookAtY?: number;
+  /** Field of view in degrees (default: 45) */
+  cameraFov?: number;
   onFlipStart?: (page: number, direction: "next" | "prev") => void;
   onFlipEnd?: (page: number) => void;
   onPageChange?: (page: number) => void;
@@ -78,8 +89,12 @@ const easeInOutQuart = (t: number): number => {
 
 // Additional easing for the curl effect - peaks at middle
 const curlEasing = (t: number): number => {
-  // Sine wave that peaks at 0.5
-  return Math.sin(t * Math.PI);
+  return t * t * t;
+};
+
+// Easing for fly-out/fly-in animation - smooth acceleration then deceleration
+const easeOutCubic = (t: number): number => {
+  return 1 - Math.pow(1 - t, 3);
 };
 
 const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
@@ -104,6 +119,11 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
       pageMetalness = 0.0,
       antialias = true,
       backgroundColor = "#515558",
+      cameraZoom = 1.35,
+      pageScale = 6,
+      cameraPositionY = 0,
+      cameraLookAtY = 0,
+      cameraFov = 45,
       onFlipStart,
       onFlipEnd,
       onPageChange,
@@ -136,11 +156,64 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
     const [isInitialized, setIsInitialized] = useState(false);
 
     const numPages = pages.length;
-    const numSheets = Math.ceil(numPages / 2);
+    // In single-page mode, create one sheet per page
+    // In two-page mode, create one sheet per two pages
+    const numSheets = singlePageMode ? numPages : Math.ceil(numPages / 2);
 
-    // Dimensions in world units - page is sized relative to aspect ratio
-    const pageWorldWidth = 4;
-    const pageWorldHeight = (height / (width / 2)) * pageWorldWidth;
+    // Base dimension in world units - used as reference scale (configurable via pageScale prop)
+    const baseWorldSize = pageScale;
+
+    // Get reference page dimensions from the first page
+    // All pages will be scaled to match this reference for consistent display
+    const referencePageDimensions = useMemo(() => {
+      const firstPage = pages[0];
+      if (firstPage?.width && firstPage?.height) {
+        const pageAspect = firstPage.width / firstPage.height;
+        // Scale to fit within baseWorldSize while maintaining aspect ratio
+        if (pageAspect >= 1) {
+          // Landscape or square
+          return {
+            width: baseWorldSize,
+            height: baseWorldSize / pageAspect,
+          };
+        } else {
+          // Portrait
+          return {
+            width: baseWorldSize * pageAspect,
+            height: baseWorldSize,
+          };
+        }
+      }
+      // Fallback to container-based dimensions
+      const containerAspect = singlePageMode
+        ? width / height
+        : width / 2 / height;
+      if (containerAspect >= 1) {
+        return {
+          width: baseWorldSize,
+          height: baseWorldSize / containerAspect,
+        };
+      } else {
+        return {
+          width: baseWorldSize * containerAspect,
+          height: baseWorldSize,
+        };
+      }
+    }, [pages, width, height, singlePageMode]);
+
+    // Calculate world dimensions for a specific page
+    // Uses reference dimensions for consistency - all pages same size
+    const getPageWorldDimensions = useCallback(
+      (_pageIndex: number): { width: number; height: number } => {
+        // Return consistent dimensions for all pages based on first page
+        return referencePageDimensions;
+      },
+      [referencePageDimensions],
+    );
+
+    // Default page dimensions (used for base geometry)
+    const pageWorldWidth = referencePageDimensions.width;
+    const pageWorldHeight = referencePageDimensions.height;
 
     const parseBackgroundColor = useCallback((color: string): THREE.Color => {
       return new THREE.Color(color);
@@ -152,22 +225,59 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d")!;
 
+        const page = pages[pageIndex - 1];
+
         // Higher resolution for sharper text/images
         const resolution = 2;
-        canvas.width = Math.floor(width / 2) * resolution;
-        canvas.height = height * resolution;
+
+        // Use per-page dimensions if available, otherwise use container dimensions
+        // This supports mixed landscape/portrait pages (e.g., from PDFs)
+        let pageWidth: number;
+        let pageHeight: number;
+
+        if (page?.width && page?.height) {
+          // Page has its own dimensions (e.g., from PDF)
+          pageWidth = page.width;
+          pageHeight = page.height;
+        } else {
+          // Use container dimensions
+          pageWidth = singlePageMode ? width : width / 2;
+          pageHeight = height;
+        }
+
+        // Detect orientation
+        const isLandscape =
+          page?.orientation === "landscape" ||
+          (!page?.orientation && pageWidth > pageHeight);
+
+        // For landscape pages in single-page mode, use full width
+        // For landscape pages in two-page mode, we still show them as single pages
+        const canvasWidth = Math.floor(pageWidth) * resolution;
+        const canvasHeight = Math.floor(pageHeight) * resolution;
+
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
 
         // White background
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        const page = pages[pageIndex - 1];
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.minFilter = THREE.LinearMipMapLinearFilter;
         texture.magFilter = THREE.LinearFilter;
         texture.generateMipmaps = true;
+
+        // Store page info on texture for later use
+        (
+          texture as THREE.CanvasTexture & {
+            pageInfo?: { isLandscape: boolean; width: number; height: number };
+          }
+        ).pageInfo = {
+          isLandscape,
+          width: pageWidth,
+          height: pageHeight,
+        };
 
         if (!page) {
           return texture;
@@ -222,7 +332,7 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
 
         return texture;
       },
-      [pages, width, height],
+      [pages, width, height, singlePageMode],
     );
 
     // Get or create texture for a page
@@ -256,7 +366,7 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
       }
     }, [numPages, getTexture]);
 
-    // Create base geometry (flat page) - reused for all pages
+    // Create base geometry (flat page) - reused for pages with same aspect ratio
     const createBaseGeometry = useCallback((): THREE.PlaneGeometry => {
       if (baseGeometryRef.current) {
         return baseGeometryRef.current;
@@ -273,6 +383,23 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
       return geometry;
     }, [pageWorldWidth, pageWorldHeight, pageSegmentsW, pageSegmentsH]);
 
+    // Create geometry for a specific page
+    // Now uses actual page dimensions for both single-page and two-page modes
+    const createPageGeometry = useCallback(
+      (pageIndex: number): THREE.PlaneGeometry => {
+        // Use actual page dimensions for each page
+        const dims = getPageWorldDimensions(pageIndex);
+
+        return new THREE.PlaneGeometry(
+          dims.width,
+          dims.height,
+          pageSegmentsW,
+          pageSegmentsH,
+        );
+      },
+      [getPageWorldDimensions, pageSegmentsW, pageSegmentsH],
+    );
+
     // Apply realistic page curl deformation to geometry
     const applyPageCurl = useCallback(
       (
@@ -284,7 +411,33 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
         const positions = geometry.attributes.position;
         const count = positions.count;
 
-        if (!baseGeometryRef.current) return;
+        // Store original positions and bounds if not already stored
+        if (!geometry.userData.originalPositions) {
+          geometry.userData.originalPositions = new Float32Array(
+            positions.array,
+          );
+          // Compute and store original bounds BEFORE any transformations
+          geometry.computeBoundingBox();
+          const bounds = geometry.boundingBox;
+          if (bounds) {
+            geometry.userData.originalBounds = {
+              minX: bounds.min.x,
+              maxX: bounds.max.x,
+              minY: bounds.min.y,
+              maxY: bounds.max.y,
+              width: bounds.max.x - bounds.min.x,
+              height: bounds.max.y - bounds.min.y,
+            };
+          }
+        }
+
+        const origPositions = geometry.userData.originalPositions;
+        const origBounds = geometry.userData.originalBounds;
+        if (!origBounds) return;
+
+        const geoWidth = origBounds.width;
+        const geoHeight = origBounds.height;
+        const minX = origBounds.minX;
 
         const easedProgress = easeInOutQuart(flipProgress);
         const rotationAngle = isFlippingNext
@@ -296,12 +449,12 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
         const curlAngle = curlIntensity * maxCurlAngle;
 
         for (let i = 0; i < count; i++) {
-          const basePos = baseGeometryRef.current!.attributes.position;
-          const origX = basePos.getX(i);
-          const origY = basePos.getY(i);
+          const origX = origPositions[i * 3];
+          const origY = origPositions[i * 3 + 1];
 
-          const distFromSpine = origX + pageWorldWidth / 2;
-          const normalizedDist = distFromSpine / pageWorldWidth;
+          // Distance from left edge (spine) normalized to geometry width
+          const distFromSpine = origX - minX;
+          const normalizedDist = distFromSpine / geoWidth;
 
           const cosR = Math.cos(rotationAngle);
           const sinR = Math.sin(rotationAngle);
@@ -322,19 +475,20 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
           const waveStrength = curlIntensity * (1 - hardness) * 0.02;
           const waveY =
             Math.sin(normalizedDist * Math.PI * 1.5) *
-            Math.sin((origY / pageWorldHeight) * Math.PI) *
+            Math.sin((origY / geoHeight) * Math.PI) *
             waveStrength *
-            pageWorldHeight;
+            geoHeight;
 
-          positions.setX(i, finalX - pageWorldWidth / 2);
+          positions.setX(i, finalX + minX);
           positions.setY(i, origY + waveY);
           positions.setZ(i, finalZ);
         }
 
         positions.needsUpdate = true;
+        geometry.computeBoundingBox();
         geometry.computeVertexNormals();
       },
-      [pageWorldWidth, pageWorldHeight],
+      [],
     );
 
     // Create book structure - currently empty, pages handle their own rendering
@@ -345,16 +499,26 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
     // Create a page sheet (front and back mesh in a group)
     const createPageSheet = useCallback(
       (sheetIndex: number): PageSheet => {
-        const frontPageIndex = sheetIndex * 2 + 1;
-        const backPageIndex = sheetIndex * 2 + 2;
+        // In single-page mode: one sheet per page (sheetIndex = pageIndex - 1)
+        // In two-page mode: one sheet per two pages
+        const frontPageIndex = singlePageMode
+          ? sheetIndex + 1
+          : sheetIndex * 2 + 1;
+        const backPageIndex = singlePageMode
+          ? sheetIndex + 1 // Same as front in single-page mode (unused)
+          : sheetIndex * 2 + 2;
 
-        const frontGeometry = createBaseGeometry().clone();
-        const backGeometry = createBaseGeometry().clone();
+        // Use per-page geometry for landscape/portrait support
+        const frontGeometry = createPageGeometry(frontPageIndex);
+        const backGeometry = singlePageMode
+          ? createPageGeometry(frontPageIndex)
+          : createPageGeometry(backPageIndex);
 
         const frontTexture = getTexture(frontPageIndex);
-        const backTexture = getTexture(backPageIndex);
+        const backTexture = singlePageMode ? null : getTexture(backPageIndex);
 
-        if (backTexture) {
+        // In two-page mode, mirror the back texture
+        if (!singlePageMode && backTexture) {
           backTexture.wrapS = THREE.RepeatWrapping;
           backTexture.repeat.x = -1;
           backTexture.offset.x = 1;
@@ -368,6 +532,7 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
           color: 0xffffff,
         });
 
+        // In single-page mode, back side is blank white (no content)
         const backMaterial = new THREE.MeshStandardMaterial({
           map: backTexture,
           side: THREE.BackSide,
@@ -379,8 +544,19 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
         const frontMesh = new THREE.Mesh(frontGeometry, frontMaterial);
         const backMesh = new THREE.Mesh(backGeometry, backMaterial);
 
-        frontMesh.position.x = pageWorldWidth / 2;
-        backMesh.position.x = pageWorldWidth / 2;
+        // In single-page mode, center the page; otherwise offset to right of spine
+        if (singlePageMode) {
+          frontMesh.position.x = 0;
+          backMesh.position.x = 0;
+        } else {
+          // Two-page mode: position pages so they pivot at the spine (x=0)
+          // Front mesh (right page when not flipped): offset to right of spine
+          const frontGeoWidth = frontGeometry.parameters.width;
+          frontMesh.position.x = frontGeoWidth / 2;
+          // Back mesh (left page when flipped): also offset to right (will be rotated 180° to show on left)
+          const backGeoWidth = backGeometry.parameters.width;
+          backMesh.position.x = backGeoWidth / 2;
+        }
 
         const group = new THREE.Group();
         group.add(frontMesh);
@@ -405,32 +581,205 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
         };
       },
       [
-        createBaseGeometry,
+        createPageGeometry,
         getTexture,
         pageRoughness,
         pageMetalness,
         pageWorldWidth,
         shadows,
+        singlePageMode,
       ],
     );
 
     // Reset a sheet to flat geometry at a specific rotation
     const resetSheetGeometry = useCallback(
       (sheet: PageSheet, rotation: number) => {
-        const baseGeom = createBaseGeometry();
+        // Create fresh geometry with correct per-page dimensions
+        const frontGeom = createPageGeometry(sheet.frontPageIndex);
+        const backGeom = singlePageMode
+          ? createPageGeometry(sheet.frontPageIndex)
+          : createPageGeometry(sheet.backPageIndex);
 
         sheet.frontMesh.geometry.dispose();
-        sheet.frontMesh.geometry = baseGeom.clone();
+        sheet.frontMesh.geometry = frontGeom;
 
         sheet.backMesh.geometry.dispose();
-        sheet.backMesh.geometry = baseGeom.clone();
+        sheet.backMesh.geometry = backGeom;
+
+        // Reset mesh positions
+        if (singlePageMode) {
+          sheet.frontMesh.position.x = 0;
+          sheet.backMesh.position.x = 0;
+        } else {
+          // Two-page mode: position at half the geometry width (pivot at left edge/spine)
+          const geoWidth = frontGeom.parameters.width;
+          sheet.frontMesh.position.x = geoWidth / 2;
+          sheet.backMesh.position.x = geoWidth / 2;
+        }
 
         sheet.group.rotation.y = rotation;
         sheet.group.position.z = 0;
+        sheet.group.position.x = 0;
         sheet.baseRotation = rotation;
         sheet.isFlipping = false;
       },
-      [createBaseGeometry],
+      [createPageGeometry, singlePageMode],
+    );
+
+    // Apply curl deformation to geometry for fly animations
+    const applyFlyCurl = useCallback(
+      (geometry: THREE.BufferGeometry, curlAmount: number) => {
+        const positions = geometry.attributes.position;
+        const count = positions.count;
+
+        // Store original positions and bounds if not already stored
+        if (!geometry.userData.originalPositions) {
+          geometry.userData.originalPositions = new Float32Array(
+            positions.array,
+          );
+          // Compute and store original bounds BEFORE any transformations
+          geometry.computeBoundingBox();
+          const bounds = geometry.boundingBox;
+          if (bounds) {
+            geometry.userData.originalBounds = {
+              minX: bounds.min.x,
+              maxX: bounds.max.x,
+              minY: bounds.min.y,
+              maxY: bounds.max.y,
+              width: bounds.max.x - bounds.min.x,
+              height: bounds.max.y - bounds.min.y,
+            };
+          }
+        }
+
+        const origPositions = geometry.userData.originalPositions;
+        const origBounds = geometry.userData.originalBounds;
+        if (!origBounds) return;
+
+        const geoWidth = origBounds.width;
+        const geoHeight = origBounds.height;
+        const minX = origBounds.minX;
+        const minY = origBounds.minY;
+
+        for (let i = 0; i < count; i++) {
+          const origX = origPositions[i * 3];
+          const origY = origPositions[i * 3 + 1];
+          const origZ = origPositions[i * 3 + 2];
+
+          // Normalize x position (0 to 1 from left to right edge)
+          const normalizedX = (origX - minX) / geoWidth;
+          // Normalize y position (-1 to 1 from bottom to top)
+          const normalizedY = ((origY - minY) / geoHeight) * 2 - 1;
+
+          // Curl increases towards the right edge (like lifting paper)
+          const edgeCurl =
+            Math.pow(normalizedX, 2) * curlAmount * geoWidth * 0.4;
+
+          // Corner lift - more pronounced at corners
+          const cornerFactor = Math.abs(normalizedY) * normalizedX;
+          const cornerLift = cornerFactor * curlAmount * geoHeight * 0.3;
+
+          // Wave along the page for paper ripple effect
+          const wave =
+            Math.sin(normalizedX * Math.PI * 2) *
+            Math.sin(Math.abs(normalizedY) * Math.PI) *
+            curlAmount *
+            geoWidth *
+            0.08;
+
+          // Apply deformation
+          const zOffset = edgeCurl + cornerLift + wave;
+
+          positions.setX(i, origX);
+          positions.setY(i, origY);
+          positions.setZ(i, origZ + zOffset);
+        }
+
+        positions.needsUpdate = true;
+        geometry.computeVertexNormals();
+      },
+      [],
+    );
+
+    // Apply fly-out animation for single-page mode
+    const applyFlyOut = useCallback(
+      (sheet: PageSheet, progress: number) => {
+        // Get the actual page dimensions from the geometry
+        const frontGeom = sheet.frontMesh.geometry as THREE.PlaneGeometry;
+        const sheetWidth = frontGeom.parameters.width;
+        const sheetHeight = frontGeom.parameters.height;
+
+        // Fly out to the right with slight rotation and lift
+        const easedProgress = easeOutCubic(progress);
+
+        // Move right and up - use actual sheet dimensions
+        sheet.group.position.x = easedProgress * sheetWidth * 2;
+        sheet.group.position.y = easedProgress * sheetHeight * 0.3;
+        sheet.group.position.z = easedProgress * 2; // Lift towards camera
+
+        // Slight rotation as it flies out
+        sheet.group.rotation.z = -easedProgress * Math.PI * 0.1;
+        sheet.group.rotation.y = easedProgress * Math.PI * 0.15;
+
+        // Apply curl to geometry - peaks in the middle of animation
+        const curlIntensity = Math.sin(progress * Math.PI) * 1.5;
+        const backGeom = sheet.backMesh.geometry as THREE.BufferGeometry;
+        applyFlyCurl(frontGeom, curlIntensity);
+        applyFlyCurl(backGeom, curlIntensity);
+
+        // Fade out via opacity
+        const opacity = 1 - easedProgress * 0.5;
+        (sheet.frontMesh.material as THREE.MeshStandardMaterial).opacity =
+          opacity;
+        (sheet.backMesh.material as THREE.MeshStandardMaterial).opacity =
+          opacity;
+        (sheet.frontMesh.material as THREE.MeshStandardMaterial).transparent =
+          true;
+        (sheet.backMesh.material as THREE.MeshStandardMaterial).transparent =
+          true;
+      },
+      [applyFlyCurl],
+    );
+
+    // Apply fly-in animation for single-page mode
+    const applyFlyIn = useCallback(
+      (sheet: PageSheet, progress: number) => {
+        // Get the actual page dimensions from the geometry
+        const frontGeom = sheet.frontMesh.geometry as THREE.PlaneGeometry;
+        const sheetWidth = frontGeom.parameters.width;
+        const sheetHeight = frontGeom.parameters.height;
+
+        // Fly in from the right
+        const easedProgress = easeOutCubic(progress);
+        const inverseProgress = 1 - easedProgress;
+
+        // Start from off-screen right and come in - use actual sheet dimensions
+        sheet.group.position.x = inverseProgress * sheetWidth * 2;
+        sheet.group.position.y = inverseProgress * sheetHeight * 0.3;
+        sheet.group.position.z = inverseProgress * 2 + 0.01; // Start lifted, end at stack level
+
+        // Rotation decreases as it lands
+        sheet.group.rotation.z = -inverseProgress * Math.PI * 0.1;
+        sheet.group.rotation.y = inverseProgress * Math.PI * 0.15;
+
+        // Apply curl to geometry - starts curled and flattens as it lands
+        const curlIntensity = Math.sin(inverseProgress * Math.PI) * 1.5;
+        const backGeom = sheet.backMesh.geometry as THREE.BufferGeometry;
+        applyFlyCurl(frontGeom, curlIntensity);
+        applyFlyCurl(backGeom, curlIntensity);
+
+        // Fade in
+        const opacity = 0.5 + easedProgress * 0.5;
+        (sheet.frontMesh.material as THREE.MeshStandardMaterial).opacity =
+          opacity;
+        (sheet.backMesh.material as THREE.MeshStandardMaterial).opacity =
+          opacity;
+        (sheet.frontMesh.material as THREE.MeshStandardMaterial).transparent =
+          true;
+        (sheet.backMesh.material as THREE.MeshStandardMaterial).transparent =
+          true;
+      },
+      [applyFlyCurl],
     );
 
     // Update sheet visual state during flip animation
@@ -438,28 +787,48 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
       (sheet: PageSheet, progress: number, direction: "next" | "prev") => {
         const isNext = direction === "next";
 
-        const isCover =
-          sheet.frontPageIndex === 1 || sheet.backPageIndex === numPages;
-        const hardness = isCover ? coverHardness : pageHardness;
+        if (singlePageMode) {
+          // In single-page mode, use fly-out/fly-in animation
+          if (isNext) {
+            applyFlyOut(sheet, progress);
+          } else {
+            applyFlyIn(sheet, progress);
+          }
 
-        const frontGeom = sheet.frontMesh.geometry as THREE.BufferGeometry;
-        const backGeom = sheet.backMesh.geometry as THREE.BufferGeometry;
+          sheet.frontMesh.renderOrder = 1000;
+          sheet.backMesh.renderOrder = 1000;
+          (sheet.frontMesh.material as THREE.Material).depthTest = false;
+          (sheet.backMesh.material as THREE.Material).depthTest = false;
+        } else {
+          // Two-page mode: use page curl animation
+          const isCover =
+            sheet.frontPageIndex === 1 || sheet.backPageIndex === numPages;
+          const hardness = isCover ? coverHardness : pageHardness;
 
-        applyPageCurl(frontGeom, progress, isNext, hardness);
-        applyPageCurl(backGeom, progress, isNext, hardness);
+          const frontGeom = sheet.frontMesh.geometry as THREE.BufferGeometry;
+          const backGeom = sheet.backMesh.geometry as THREE.BufferGeometry;
 
-        sheet.group.rotation.y = 0;
-        // Small z-offset just to separate from stack, combined with renderOrder and depthTest=false
-        sheet.group.position.z = 0.01;
+          applyPageCurl(frontGeom, progress, isNext, hardness);
+          applyPageCurl(backGeom, progress, isNext, hardness);
 
-        sheet.frontMesh.renderOrder = 1000;
-        sheet.backMesh.renderOrder = 1000;
+          sheet.group.rotation.y = 0;
+          sheet.group.position.z = 0.01;
 
-        // Disable depthTest so flipping page always renders on top regardless of z position
-        (sheet.frontMesh.material as THREE.Material).depthTest = false;
-        (sheet.backMesh.material as THREE.Material).depthTest = false;
+          sheet.frontMesh.renderOrder = 1000;
+          sheet.backMesh.renderOrder = 1000;
+          (sheet.frontMesh.material as THREE.Material).depthTest = false;
+          (sheet.backMesh.material as THREE.Material).depthTest = false;
+        }
       },
-      [applyPageCurl, coverHardness, pageHardness, numPages],
+      [
+        applyPageCurl,
+        applyFlyOut,
+        applyFlyIn,
+        coverHardness,
+        pageHardness,
+        numPages,
+        singlePageMode,
+      ],
     );
 
     // Initialize Three.js scene
@@ -487,14 +856,13 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
       sceneRef.current = scene;
 
       const aspect = width / height;
-      const fov = 45;
 
-      const camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 100);
+      const camera = new THREE.PerspectiveCamera(cameraFov, aspect, 0.1, 100);
 
-      const cameraDistance = 10;
-      const cameraHeight = -1;
-      camera.position.set(0, cameraHeight, cameraDistance);
-      camera.lookAt(0, 0.5, 0);
+      // Initial camera position - will be adjusted in resize effect
+      const cameraDistance = 8;
+      camera.position.set(0, 0, cameraDistance);
+      camera.lookAt(0, 0, 0);
       cameraRef.current = camera;
 
       // Lighting
@@ -579,7 +947,7 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
           }),
         );
         shadowPlane.rotation.x = -Math.PI / 2;
-        shadowPlane.position.y = -pageWorldHeight / 2 - 0.2;
+        shadowPlane.position.y = -referencePageDimensions.height / 2 - 0.5;
         shadowPlane.receiveShadow = true;
         scene.add(shadowPlane);
 
@@ -593,7 +961,7 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
           }),
         );
         groundPlane.rotation.x = -Math.PI / 2;
-        groundPlane.position.y = -pageWorldHeight / 2 - 0.21;
+        groundPlane.position.y = -referencePageDimensions.height / 2 - 0.51;
         groundPlane.receiveShadow = true;
         scene.add(groundPlane);
       }
@@ -619,9 +987,123 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
       parseBackgroundColor,
       preloadTextures,
       createBaseGeometry,
-      pageWorldHeight,
+      referencePageDimensions,
       createBookStructure,
     ]);
+
+    // Reset sheet position and rotation after fly animation
+    const resetSheetTransform = useCallback((sheet: PageSheet) => {
+      sheet.group.position.x = 0;
+      sheet.group.position.y = 0;
+      sheet.group.position.z = 0;
+      sheet.group.rotation.x = 0;
+      sheet.group.rotation.y = 0;
+      sheet.group.rotation.z = 0;
+      (sheet.frontMesh.material as THREE.MeshStandardMaterial).opacity = 1;
+      (sheet.backMesh.material as THREE.MeshStandardMaterial).opacity = 1;
+      (sheet.frontMesh.material as THREE.MeshStandardMaterial).transparent =
+        false;
+      (sheet.backMesh.material as THREE.MeshStandardMaterial).transparent =
+        false;
+    }, []);
+
+    // Update all sheet states based on current page
+    const updateSheetStates = useCallback(() => {
+      const currentPage = currentPageRef.current;
+      const totalSheets = pageSheetsRef.current.length;
+
+      if (singlePageMode) {
+        // In single-page mode: each sheet is one page
+        // Sheet index = page number - 1
+        // Show current page on top, and pre-render next page below it
+
+        const nextPage = currentPage + 1;
+
+        pageSheetsRef.current.forEach((sheet, index) => {
+          const isFlippingSheet = sheet.isFlipping;
+          const sheetPageNumber = index + 1; // 1-indexed
+
+          // Reset render order and depth for non-flipping sheets
+          if (!isFlippingSheet) {
+            sheet.frontMesh.renderOrder = 0;
+            sheet.backMesh.renderOrder = 0;
+            (sheet.frontMesh.material as THREE.Material).depthTest = true;
+            (sheet.backMesh.material as THREE.Material).depthTest = true;
+            // Reset transform
+            resetSheetTransform(sheet);
+          }
+
+          if (isFlippingSheet) {
+            // Animating sheet: keep visible for fly animation
+            sheet.group.visible = true;
+            sheet.frontMesh.visible = true;
+            sheet.backMesh.visible = true;
+            return;
+          }
+
+          // Show current page on top
+          if (sheetPageNumber === currentPage) {
+            sheet.group.visible = true;
+            sheet.frontMesh.visible = true;
+            sheet.backMesh.visible = false; // Back is blank
+            sheet.group.position.z = 0.02; // On top
+          } else if (sheetPageNumber === nextPage && nextPage <= numPages) {
+            // Pre-render next page below current page
+            sheet.group.visible = true;
+            sheet.frontMesh.visible = true;
+            sheet.backMesh.visible = false;
+            sheet.group.position.z = 0.01; // Below current page
+          } else {
+            // Hide all other pages
+            sheet.group.visible = false;
+          }
+        });
+      } else {
+        // Two-page spread mode
+        // In a spread: left page = back of flipped sheet, right page = front of unflipped sheet
+        const getSheetFlippedState = (sheetIndex: number): boolean => {
+          const backPageOfSheet = (sheetIndex + 1) * 2;
+          return currentPage >= backPageOfSheet;
+        };
+
+        pageSheetsRef.current.forEach((sheet, index) => {
+          const isFlippingSheet = sheet.isFlipping;
+
+          if (!isFlippingSheet) {
+            sheet.frontMesh.renderOrder = 0;
+            sheet.backMesh.renderOrder = 0;
+          }
+
+          sheet.frontMesh.visible = true;
+          sheet.backMesh.visible = true;
+
+          const isFlipped = getSheetFlippedState(index);
+
+          if (isFlippingSheet) {
+            sheet.group.visible = true;
+            sheet.frontMesh.visible = true;
+            sheet.backMesh.visible = true;
+            return;
+          }
+
+          if (isFlipped) {
+            resetSheetGeometry(sheet, -Math.PI);
+            sheet.group.position.z = (index + 1) * 0.001;
+            (sheet.frontMesh.material as THREE.Material).depthTest = true;
+            (sheet.backMesh.material as THREE.Material).depthTest = true;
+            sheet.group.position.x = 0;
+            sheet.group.visible = true;
+          } else {
+            resetSheetGeometry(sheet, 0);
+            sheet.group.position.z = (totalSheets - index) * 0.001;
+            (sheet.frontMesh.material as THREE.Material).depthTest = true;
+            (sheet.backMesh.material as THREE.Material).depthTest = true;
+            sheet.group.position.x = 0;
+            sheet.group.visible = true;
+          }
+        });
+      }
+    }, [resetSheetGeometry, resetSheetTransform, singlePageMode, numPages]);
 
     // Create all page sheets
     const createAllSheets = useCallback(() => {
@@ -646,59 +1128,7 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
 
       // Set initial states
       updateSheetStates();
-    }, [numSheets, createPageSheet]);
-
-    // Update all sheet states based on current page
-    const updateSheetStates = useCallback(() => {
-      const currentPage = currentPageRef.current;
-      const totalSheets = pageSheetsRef.current.length;
-
-      const getSheetFlippedState = (sheetIndex: number): boolean => {
-        const backPageOfSheet = (sheetIndex + 1) * 2;
-        return currentPage >= backPageOfSheet;
-      };
-
-      pageSheetsRef.current.forEach((sheet, index) => {
-        if (sheet.isFlipping) return;
-
-        sheet.frontMesh.renderOrder = 0;
-        sheet.backMesh.renderOrder = 0;
-
-        const isFlipped = getSheetFlippedState(index);
-
-        if (isFlipped) {
-          resetSheetGeometry(sheet, -Math.PI);
-          // Stack flipped pages with slight z offset (closer to camera = higher index)
-          sheet.group.position.z = (index + 1) * 0.001;
-          // Re-enable depthTest for stacked pages
-          (sheet.frontMesh.material as THREE.Material).depthTest = true;
-          (sheet.backMesh.material as THREE.Material).depthTest = true;
-          sheet.group.position.x = 0;
-
-          if (singlePageMode) {
-            const currentSpread = Math.floor((currentPage - 1) / 2);
-            sheet.group.visible = index >= currentSpread - 1;
-          } else {
-            sheet.group.visible = true;
-          }
-        } else {
-          resetSheetGeometry(sheet, 0);
-          // Stack unflipped pages with slight z offset (closer to camera = lower index)
-          sheet.group.position.z = (totalSheets - index) * 0.001;
-          // Re-enable depthTest for stacked pages
-          (sheet.frontMesh.material as THREE.Material).depthTest = true;
-          (sheet.backMesh.material as THREE.Material).depthTest = true;
-          sheet.group.position.x = 0;
-
-          if (singlePageMode) {
-            const currentSpread = Math.floor((currentPage - 1) / 2);
-            sheet.group.visible = index <= currentSpread + 1;
-          } else {
-            sheet.group.visible = true;
-          }
-        }
-      });
-    }, [resetSheetGeometry, singlePageMode]);
+    }, [numSheets, createPageSheet, updateSheetStates]);
 
     // Animation loop
     const animate = useCallback(() => {
@@ -762,8 +1192,9 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
 
             if (nextDirection === "next") {
               if (singlePageMode) {
-                nextSheetIndex = Math.floor((flipAnim.targetPage - 1) / 2);
-                nextTargetPage = Math.min(flipAnim.targetPage + 1, numPages);
+                // In single-page mode: each sheet is one page
+                nextSheetIndex = flipAnim.targetPage - 1;
+                nextTargetPage = flipAnim.targetPage + 1;
               } else {
                 // Find the first unflipped sheet to flip
                 let firstUnflippedSheet = -1;
@@ -788,9 +1219,9 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
               }
             } else {
               if (singlePageMode) {
-                nextSheetIndex = Math.floor((flipAnim.targetPage - 2) / 2);
-                if (nextSheetIndex < 0) nextSheetIndex = 0;
-                nextTargetPage = Math.max(flipAnim.targetPage - 1, 1);
+                // In single-page mode: each sheet is one page
+                nextSheetIndex = flipAnim.targetPage - 2;
+                nextTargetPage = flipAnim.targetPage - 1;
               } else {
                 // Find the most recently flipped sheet to flip back
                 let lastFlippedSheet = -1;
@@ -914,8 +1345,10 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
           }
 
           if (singlePageMode) {
-            sheetIndex = Math.floor((current - 1) / 2);
-            targetPage = Math.min(current + 1, numPages);
+            // In single-page mode: each sheet is one page
+            // Current page flies out, next page appears
+            sheetIndex = current - 1; // Sheet index = page - 1
+            targetPage = current + 1;
           } else {
             // Find the first unflipped sheet to flip
             // A sheet is unflipped when currentPage < its back page
@@ -949,9 +1382,10 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
           }
 
           if (singlePageMode) {
-            sheetIndex = Math.floor((current - 2) / 2);
-            if (sheetIndex < 0) sheetIndex = 0;
-            targetPage = Math.max(current - 1, 1);
+            // In single-page mode: each sheet is one page
+            // Previous page flies in on top
+            sheetIndex = current - 2; // The sheet for the previous page
+            targetPage = current - 1;
           } else {
             // In spread mode, find the most recently flipped sheet to flip back
             // A sheet is flipped when currentPage >= its back page
@@ -1120,7 +1554,7 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
       };
     }, []);
 
-    // Handle resize
+    // Handle resize and dynamic camera positioning based on current page size
     useEffect(() => {
       if (!rendererRef.current || !cameraRef.current) return;
 
@@ -1131,8 +1565,49 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
       const camera = cameraRef.current;
       if (!camera) return;
       camera.aspect = aspect;
+
+      // Adjust camera distance based on page dimensions
+      const fovRad = (cameraFov * Math.PI) / 180;
+
+      // Use reference dimensions for consistent framing
+      const pageWidth = referencePageDimensions.width;
+      const pageHeight = referencePageDimensions.height;
+
+      // Calculate the visible area needed
+      const effectiveWidth = singlePageMode ? pageWidth : pageWidth * 2;
+      const effectiveHeight = pageHeight;
+
+      // Calculate camera distance to fit content
+      // For vertical FOV camera, we need to check both dimensions
+      const halfFovTan = Math.tan(fovRad / 2);
+
+      // Distance needed to fit height in view
+      const distanceForHeight = effectiveHeight / 2 / halfFovTan;
+
+      // Distance needed to fit width in view (accounting for aspect ratio)
+      // Horizontal FOV = 2 * atan(tan(vFov/2) * aspect)
+      const halfHorizontalFovTan = halfFovTan * aspect;
+      const distanceForWidth = effectiveWidth / 2 / halfHorizontalFovTan;
+
+      // Use the larger distance to ensure everything fits, plus margin for aesthetics
+      const cameraDistance =
+        Math.max(distanceForHeight, distanceForWidth) * cameraZoom;
+
+      camera.position.z = cameraDistance;
+      camera.position.y = cameraPositionY;
+      camera.lookAt(0, cameraLookAtY, 0);
+
       camera.updateProjectionMatrix();
-    }, [width, height, pageWorldHeight]);
+    }, [
+      width,
+      height,
+      singlePageMode,
+      referencePageDimensions,
+      cameraZoom,
+      cameraFov,
+      cameraPositionY,
+      cameraLookAtY,
+    ]);
 
     // Update when currentPage prop changes externally
     useEffect(() => {
@@ -1147,10 +1622,33 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
     // Recreate sheets when pages change
     useEffect(() => {
       if (isInitialized && bookGroupRef.current) {
+        // Clear texture cache when pages change
+        texturesRef.current.forEach((texture) => texture.dispose());
+        texturesRef.current.clear();
+
         createAllSheets();
         createBookStructure();
       }
-    }, [pages, isInitialized]);
+    }, [pages, isInitialized, createAllSheets, createBookStructure]);
+
+    // Handle singlePageMode changes - need to regenerate textures and geometry
+    useEffect(() => {
+      if (isInitialized && bookGroupRef.current) {
+        // Clear texture cache so textures are regenerated with correct dimensions
+        texturesRef.current.forEach((texture) => texture.dispose());
+        texturesRef.current.clear();
+
+        // Clear base geometry cache so geometry is recreated with correct aspect ratio
+        if (baseGeometryRef.current) {
+          baseGeometryRef.current.dispose();
+          baseGeometryRef.current = null;
+        }
+
+        // Recreate all sheets with new textures and geometry
+        createAllSheets();
+        createBookStructure();
+      }
+    }, [singlePageMode, isInitialized, createAllSheets, createBookStructure]);
 
     return (
       <div

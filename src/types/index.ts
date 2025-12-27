@@ -14,6 +14,12 @@ export interface FlipbookPage {
   side?: "left" | "right";
   /** Whether this is an empty/placeholder page */
   empty?: boolean;
+  /** Page width in pixels (for landscape/portrait support) */
+  width?: number;
+  /** Page height in pixels (for landscape/portrait support) */
+  height?: number;
+  /** Page orientation - auto-detected from width/height if not specified */
+  orientation?: "portrait" | "landscape";
 }
 
 // Table of contents
@@ -445,6 +451,20 @@ export interface FlipbookOptions {
 
   // Rendering
   antialias?: boolean;
+
+  // Camera settings (WebGL)
+  /** Camera zoom/margin factor - higher values move camera further back (default: 1.35) */
+  cameraZoom?: number;
+  /** Camera vertical position offset (default: 0) */
+  cameraPositionY?: number;
+  /** Camera look-at Y position (default: 0) */
+  cameraLookAtY?: number;
+  /** Field of view in degrees (default: 45) */
+  cameraFov?: number;
+
+  // Page scale settings (WebGL)
+  /** Base page scale in world units - affects overall page size (default: 6) */
+  pageScale?: number;
 
   // Preloader
   preloaderText?: string;

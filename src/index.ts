@@ -44,6 +44,22 @@ export type {
   UsePdfLoaderReturn,
 } from "./hooks/usePdfLoader";
 
+// PDF utilities
+export {
+  pdfToFlipbookPages,
+  pdfToFlipbookPagesLazy,
+  getPdfInfo,
+  setPdfWorkerSrc,
+  calculateFlipbookSize,
+  calculateFlipbookSizeFromPages,
+} from "./utils/pdfUtils";
+export type {
+  PdfToImagesOptions,
+  PdfPageInfo,
+  FlipbookSizeOptions,
+  FlipbookSize,
+} from "./utils/pdfUtils";
+
 // Types
 export type {
   // Page types
