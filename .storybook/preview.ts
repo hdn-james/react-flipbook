@@ -1,4 +1,4 @@
-import type { Preview } from '@storybook/react';
+import type { Preview } from '@storybook/react-vite';
 
 // Import the library styles
 import '../src/styles/flipbook.css';
@@ -13,28 +13,36 @@ const preview: Preview = {
       },
     },
     backgrounds: {
-      default: 'dark',
-      values: [
-        {
+      options: {
+        dark: {
           name: 'dark',
           value: '#1a1a1a',
         },
-        {
+
+        light: {
           name: 'light',
           value: '#f5f5f5',
         },
-        {
+
+        white: {
           name: 'white',
           value: '#ffffff',
-        },
-      ],
+        }
+      }
     },
     layout: 'centered',
     docs: {
       toc: true,
     },
   },
+
   tags: ['autodocs'],
+
+  initialGlobals: {
+    backgrounds: {
+      value: 'dark'
+    }
+  }
 };
 
 export default preview;

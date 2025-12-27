@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
 import Flipbook from "../components/Flipbook";
 import type { FlipbookProps, FlipbookPage, FlipbookInstance } from "../types";
 
@@ -203,9 +204,10 @@ const withContainer = (Story: React.ComponentType) => (
 export const Default: Story = {
   args: {
     pages: placeholderPages,
-    width: 800,
-    height: 500,
+    width: "834",
+    height: "1112",
     skin: "dark",
+    onReady: fn(),
   },
   decorators: [withContainer],
 };
@@ -217,6 +219,7 @@ export const DarkTheme: Story = {
     height: 500,
     skin: "dark",
     backgroundColor: "rgb(30, 30, 30)",
+    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -235,14 +238,22 @@ export const LightTheme: Story = {
     height: 500,
     skin: "light",
     backgroundColor: "#f5f5f5",
+    onReady: fn(),
   },
+
   decorators: [withContainer],
+
   parameters: {
-    backgrounds: { default: "light" },
     docs: {
       description: {
         story: "Light theme suitable for bright backgrounds.",
       },
+    },
+  },
+
+  globals: {
+    backgrounds: {
+      value: "light",
     },
   },
 };
@@ -254,6 +265,7 @@ export const GradientTheme: Story = {
     height: 500,
     skin: "gradient",
     backgroundColor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -276,6 +288,7 @@ export const SinglePageMode: Story = {
     height: 600,
     skin: "dark",
     singlePageMode: true,
+    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -310,10 +323,11 @@ export const RightToLeft: Story = {
         title: "עמוד 4",
       },
     ],
-    width: 800,
+    width: "",
     height: 500,
     skin: "dark",
     rightToLeft: true,
+    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -335,6 +349,7 @@ export const NoToolbar: Story = {
     height: 500,
     skin: "dark",
     hideMenu: true,
+    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -356,6 +371,7 @@ export const NoSideNavigation: Story = {
     height: 500,
     skin: "dark",
     sideNavigationButtons: false,
+    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -377,6 +393,7 @@ export const StartOnPage3: Story = {
     height: 500,
     skin: "dark",
     startPage: 3,
+    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -398,6 +415,7 @@ export const ManyPages: Story = {
     width: 800,
     height: 500,
     skin: "dark",
+    onReady: fn(),
   },
   decorators: [withContainer],
   parameters: {
@@ -432,10 +450,11 @@ export const SquareFormat: Story = {
         title: "Square 4",
       },
     ],
-    width: 500,
-    height: 500,
+    width: 600,
+    height: 600,
     skin: "dark",
     singlePageMode: true,
+    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -462,9 +481,10 @@ export const WideFormat: Story = {
         title: "Panorama 3",
       },
     ],
-    width: 900,
-    height: 300,
+    width: 1200,
+    height: 400,
     skin: "dark",
+    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -484,6 +504,7 @@ export const ResponsiveWidth: Story = {
     width: "100%",
     height: 500,
     skin: "dark",
+    onReady: fn(),
   },
   decorators: [
     (Story) => (
@@ -511,6 +532,7 @@ export const Minimal: Story = {
       { src: "https://picsum.photos/800/600?random=502", title: "Page 2" },
       { src: "https://picsum.photos/800/600?random=503", title: "Page 3" },
     ],
+    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -536,7 +558,7 @@ export const WithEmptyPages: Story = {
         src: "https://picsum.photos/800/600?random=602",
         title: "Content Page",
       },
-      { src: "", title: "Another Empty", empty: true },
+      { src: "", title: "Empty Page", empty: true },
       {
         src: "https://picsum.photos/800/600?random=603",
         title: "Back Cover",
@@ -545,6 +567,7 @@ export const WithEmptyPages: Story = {
     width: 800,
     height: 500,
     skin: "dark",
+    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -567,6 +590,7 @@ export const WebGL3DMode: Story = {
     skin: "dark",
     shadows: true,
     lights: true,
+    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -600,8 +624,9 @@ export const WebGLCustomSettings: Story = {
     shadowOpacity: 0.5,
     lights: true,
     lightIntensity: 1.2,
-    pageRoughness: 0.6,
-    pageMetalness: 0.2,
+    pageRoughness: 0.2,
+    pageMetalness: 0.8,
+    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -629,6 +654,7 @@ export const WebGLNoShadows: Story = {
     skin: "dark",
     shadows: false,
     lights: true,
+    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -648,6 +674,7 @@ export const WebGLNoLights: Story = {
     skin: "dark",
     shadows: false,
     lights: false,
+    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -666,6 +693,7 @@ export const WebGLSinglePage: Story = {
     height: 600,
     skin: "dark",
     singlePageMode: true,
+    onReady: fn(),
   },
   parameters: {
     docs: {
@@ -1001,9 +1029,9 @@ export const WithEventLogging: Story = {
     width: 800,
     height: 500,
     skin: "dark",
-    onPageFlip: (event) => console.log("Page flipped:", event),
-    onZoomChange: (event) => console.log("Zoom changed:", event),
-    onFullscreenChange: (event) => console.log("Fullscreen changed:", event),
+    onPageFlip: fn(),
+    onZoomChange: fn(),
+    onFullscreenChange: fn(),
   },
   parameters: {
     docs: {
