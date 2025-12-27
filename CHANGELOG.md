@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.1.1 (2025-12-27)
+
+### ✨ Features
+- feat(ci): add GitHub Actions for auto npm publishing and release automation (f73ebcc)
+- feat: add dynamic PDF page sizing and expose camera controls (2234ac2)
+- feat: upgrade storybook (34783cc)
+
+### 🐛 Bug Fixes
+- fix: remove MDX file causing Storybook build issues (ecdb7ee)
+- fix: update Storybook MDX import for v10 compatibility (57c9e57)
+- fix: relax ESLint rules for existing code (c966417)
+- fix: add ESLint configuration file (0e80c1d)
+- fix: regenerate package-lock.json (080e4dc)
+- fix(ci): update ci/cd config (ca5486f)
+
+### 🔧 Maintenance
+- chore: gitignore (6593a3e)
+
+### 📦 Other Changes
+- init (c878ed8)
+
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
