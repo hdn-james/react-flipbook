@@ -1,0 +1,257 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prepatch
+          - preminor
+          - premajor
+          - prerelease
+        default: "patch"
+      prerelease_id:
+        description: "Prerelease identifier (e.g., alpha, beta, rc)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Dry run (do not publish)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: "npm"
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Run type checking
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+        continue-on-error: true
+
+      - name: Build package
+        run: npm run build
+
+      - name: Get current version
+        id: current_version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          if [ -n "${{ github.event.inputs.prerelease_id }}" ]; then
+            NEW_VERSION=$(npm version ${{ github.event.inputs.version_type }} --preid=${{ github.event.inputs.prerelease_id }} --no-git-tag-version)
+          else
+            NEW_VERSION=$(npm version ${{ github.event.inputs.version_type }} --no-git-tag-version)
+          fi
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "New version: ${NEW_VERSION}"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+
+          echo "Generating changelog from ${PREVIOUS_TAG:-beginning} to HEAD"
+
+          # Create changelog entry
+          CHANGELOG_FILE="CHANGELOG.md"
+          TEMP_CHANGELOG=$(mktemp)
+          DATE=$(date +%Y-%m-%d)
+
+          # Generate commit log
+          if [ -n "$PREVIOUS_TAG" ]; then
+            COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          else
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          fi
+
+          # Categorize commits
+          FEATURES=$(echo "$COMMITS" | grep -iE "^- (feat|feature|add)" || true)
+          FIXES=$(echo "$COMMITS" | grep -iE "^- (fix|bugfix|hotfix)" || true)
+          DOCS=$(echo "$COMMITS" | grep -iE "^- (doc|docs)" || true)
+          CHORES=$(echo "$COMMITS" | grep -iE "^- (chore|build|ci|refactor|style|test)" || true)
+          OTHER=$(echo "$COMMITS" | grep -viE "^- (feat|feature|add|fix|bugfix|hotfix|doc|docs|chore|build|ci|refactor|style|test)" || true)
+
+          # Build new changelog entry
+          {
+            echo "# Changelog"
+            echo ""
+            echo "## ${NEW_VERSION} (${DATE})"
+            echo ""
+
+            if [ -n "$FEATURES" ]; then
+              echo "### ✨ Features"
+              echo "$FEATURES"
+              echo ""
+            fi
+
+            if [ -n "$FIXES" ]; then
+              echo "### 🐛 Bug Fixes"
+              echo "$FIXES"
+              echo ""
+            fi
+
+            if [ -n "$DOCS" ]; then
+              echo "### 📚 Documentation"
+              echo "$DOCS"
+              echo ""
+            fi
+
+            if [ -n "$CHORES" ]; then
+              echo "### 🔧 Maintenance"
+              echo "$CHORES"
+              echo ""
+            fi
+
+            if [ -n "$OTHER" ]; then
+              echo "### 📦 Other Changes"
+              echo "$OTHER"
+              echo ""
+            fi
+
+            # Append existing changelog content (without the first "# Changelog" header)
+            if [ -f "$CHANGELOG_FILE" ]; then
+              tail -n +2 "$CHANGELOG_FILE"
+            fi
+          } > "$TEMP_CHANGELOG"
+
+          mv "$TEMP_CHANGELOG" "$CHANGELOG_FILE"
+
+          # Save release notes for GitHub release
+          {
+            if [ -n "$FEATURES" ]; then
+              echo "### ✨ Features"
+              echo "$FEATURES"
+              echo ""
+            fi
+
+            if [ -n "$FIXES" ]; then
+              echo "### 🐛 Bug Fixes"
+              echo "$FIXES"
+              echo ""
+            fi
+
+            if [ -n "$DOCS" ]; then
+              echo "### 📚 Documentation"
+              echo "$DOCS"
+              echo ""
+            fi
+
+            if [ -n "$CHORES" ]; then
+              echo "### 🔧 Maintenance"
+              echo "$CHORES"
+              echo ""
+            fi
+
+            if [ -n "$OTHER" ]; then
+              echo "### 📦 Other Changes"
+              echo "$OTHER"
+              echo ""
+            fi
+          } > release_notes.md
+
+          echo "Changelog generated successfully"
+
+      - name: Commit version bump and changelog
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git add package.json package-lock.json CHANGELOG.md
+          git commit -m "chore(release): ${{ steps.bump_version.outputs.new_version }}"
+          git tag ${{ steps.bump_version.outputs.new_version }}
+
+      - name: Push changes
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git push origin HEAD:${{ github.ref_name }}
+          git push origin ${{ steps.bump_version.outputs.new_version }}
+
+      - name: Create GitHub Release
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.bump_version.outputs.new_version }}
+          name: ${{ steps.bump_version.outputs.new_version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(github.event.inputs.version_type, 'pre') }}
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm (dry run)
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        run: |
+          echo "=== DRY RUN MODE ==="
+          echo "Would publish version: ${{ steps.bump_version.outputs.new_version }}"
+          echo ""
+          echo "=== Package contents ==="
+          npm pack --dry-run
+          echo ""
+          echo "=== Changelog preview ==="
+          head -50 CHANGELOG.md
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to npm
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Previous version:** ${{ steps.current_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **New version:** ${{ steps.bump_version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version bump:** ${{ github.event.inputs.version_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry run:** ${{ github.event.inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+            echo "### 📦 Published to npm" >> $GITHUB_STEP_SUMMARY
+            echo "[View on npm](https://www.npmjs.com/package/react-3d-flipbook/v/${{ steps.bump_version.outputs.new_version }})" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🏷️ GitHub Release" >> $GITHUB_STEP_SUMMARY
+            echo "[View release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.bump_version.outputs.new_version }})" >> $GITHUB_STEP_SUMMARY
+          fi

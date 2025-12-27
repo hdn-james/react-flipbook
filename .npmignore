@@ -1,0 +1,59 @@
+# Source files
+src/
+
+# Storybook
+.storybook/
+storybook-static/
+
+# Tests
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+coverage/
+jest.config.js
+
+# Config files
+.eslintrc*
+.prettierrc*
+tsconfig.json
+rollup.config.js
+rollup.config.mjs
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Development
+node_modules/
+.env
+.env.*
+
+# Build artifacts (keep dist/)
+*.tsbuildinfo
+
+# Documentation source (README is included)
+docs/
+
+# Examples
+examples/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
