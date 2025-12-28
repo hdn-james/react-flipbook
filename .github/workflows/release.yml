@@ -448,7 +448,8 @@ jobs:
           # handle it gracefully instead of failing the job.
           # Capture the exit code to distinguish between "tag exists" vs other errors
           set +e
-          git tag "$TAG" 2>&1
+          # Use -m flag for annotated tag message (required when GPG signing is enabled)
+          git tag -m "Release $TAG" "$TAG" 2>&1
           TAG_EXIT_CODE=$?
           set -e
 
