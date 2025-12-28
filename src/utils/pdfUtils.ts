@@ -135,7 +135,7 @@ export function calculateFlipbookSizeFromPages(
  * setPdfWorkerSrc(workerSrc);
  *
  * // For CDN
- * setPdfWorkerSrc('https://unpkg.com/pdfjs-dist@4.0.379/build/pdf.worker.mjs');
+ * setPdfWorkerSrc('https://unpkg.com/pdfjs-dist/build/pdf.worker.mjs');
  */
 export function setPdfWorkerSrc(workerSrc: string): void {
   pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -179,7 +179,7 @@ export interface PdfPageInfo {
  * import { pdfToFlipbookPages, setPdfWorkerSrc } from 'react-3d-flipbook/utils';
  *
  * // Set up worker first
- * setPdfWorkerSrc('https://unpkg.com/pdfjs-dist@4.0.379/build/pdf.worker.mjs');
+ * setPdfWorkerSrc('https://unpkg.com/pdfjs-dist/build/pdf.worker.mjs');
  *
  * // Convert PDF to flipbook pages
  * const pages = await pdfToFlipbookPages('https://example.com/document.pdf', {

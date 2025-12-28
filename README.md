@@ -79,7 +79,7 @@ import { Flipbook, pdfToFlipbookPages, setPdfWorkerSrc } from 'react-3d-flipbook
 import 'react-3d-flipbook/dist/styles.css';
 
 // Set up PDF.js worker (required once)
-setPdfWorkerSrc('https://unpkg.com/pdfjs-dist@4.0.379/build/pdf.worker.mjs');
+setPdfWorkerSrc('https://unpkg.com/pdfjs-dist/build/pdf.worker.mjs');
 
 function PdfFlipbook() {
   const [pages, setPages] = useState([]);
@@ -124,7 +124,7 @@ import {
   setPdfWorkerSrc 
 } from 'react-3d-flipbook';
 
-setPdfWorkerSrc('https://unpkg.com/pdfjs-dist@4.0.379/build/pdf.worker.mjs');
+setPdfWorkerSrc('https://unpkg.com/pdfjs-dist/build/pdf.worker.mjs');
 
 function AutoSizedPdfFlipbook() {
   const [pages, setPages] = useState([]);
@@ -171,7 +171,7 @@ Set the PDF.js worker source URL. Must be called before using any PDF functions.
 import { setPdfWorkerSrc } from 'react-3d-flipbook';
 
 // Using CDN
-setPdfWorkerSrc('https://unpkg.com/pdfjs-dist@4.0.379/build/pdf.worker.mjs');
+setPdfWorkerSrc('https://unpkg.com/pdfjs-dist/build/pdf.worker.mjs');
 
 // Using local file (Vite)
 import workerSrc from 'pdfjs-dist/build/pdf.worker.mjs?url';
