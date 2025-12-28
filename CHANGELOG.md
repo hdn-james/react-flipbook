@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.8 (2025-12-28)
+
+### ✨ Features
+- feat: add animated navigation methods to FlipbookInstance (cc900ab)
+
+### 🐛 Bug Fixes
+- fix(ci): update release workflow to use PR instead of direct push (#4) (087dff9)
+
+### 📦 Other Changes
+- Create SECURITY.md (#3) (1227f12)
+
+
 ## v1.1.7 (2025-12-28)
 
 ### ✨ Features
