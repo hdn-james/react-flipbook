@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.1.8 (2025-12-28)
+
+### ✨ Features
+- feat: enable auto-merge for release PRs (#7) (2639657)
+- feat(ci): add GPG signing for workflow commits and tags (#6) (c388707)
+- feat: add animated navigation methods to FlipbookInstance (cc900ab)
+
+### 🐛 Bug Fixes
+- fix: use react-flipbook-bot identity with verified email (#9) (c4231a5)
+- fix(ci): update release workflow to use PR instead of direct push (#4) (087dff9)
+
+### 📦 Other Changes
+- Create SECURITY.md (#3) (1227f12)
+
+
 ## v1.1.7 (2025-12-28)
 
 ### ✨ Features
