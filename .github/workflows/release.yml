@@ -73,10 +73,18 @@ jobs:
       - name: Update npm to latest (required for Trusted Publishers)
         run: npm install -g npm@latest
 
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "github-actions-bot@users.noreply.github.com"
 
       - name: Install dependencies
         run: npm ci
@@ -320,9 +328,16 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
-          # Note: For protected branches requiring verified signatures, you may need
-          # to use a dedicated bot token (secrets.RELEASE_BOT_TOKEN) with GPG signing
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: true
 
       - name: Verify merge commit is on main
         run: |
@@ -408,7 +423,7 @@ jobs:
         if: steps.check_tag.outputs.exists == 'false'
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "github-actions-bot@users.noreply.github.com"
 
       - name: Create and push tag
         if: steps.check_tag.outputs.exists == 'false'
