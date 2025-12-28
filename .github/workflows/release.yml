@@ -527,7 +527,10 @@ jobs:
           prerelease: ${{ steps.prerelease.outputs.is_prerelease == 'true' }}
           generate_release_notes: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Use GH_PAT instead of GITHUB_TOKEN to ensure the release event
+          # triggers the publish-to-npm workflow. Releases created with
+          # GITHUB_TOKEN don't trigger other workflow runs (GitHub security feature).
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Summary
         # Simplified condition: run if tag doesn't exist OR release doesn't exist
