@@ -229,12 +229,111 @@ const withContainer = (Story: React.ComponentType) => (
 // Basic Stories
 // ============================================================================
 
+// Wrapper component for Default story to use hooks properly
+const DefaultFlipbookDemo: React.FC<FlipbookProps> = (args) => {
+  const flipbookRef = useRef<FlipbookInstance>(null);
+  const [page, setPage] = useState(args.startPage || 1);
+  const prevPageRef = useRef(page);
+
+  // Sync control to animation: when page changes from input, animate flip
+  useEffect(() => {
+    if (
+      flipbookRef.current &&
+      typeof page === "number" &&
+      page !== prevPageRef.current
+    ) {
+      flipbookRef.current.flipToPage(page);
+      prevPageRef.current = page;
+    }
+  }, [page]);
+
+  // When Flipbook animates, update control state
+  const handlePageFlip = (e: { page: number; direction: "next" | "prev" }) => {
+    setPage(e.page);
+    prevPageRef.current = e.page;
+    args.onPageFlip?.(e);
+  };
+
+  return (
+    <div
+      style={{ width: args.width, height: args.height, position: "relative" }}
+    >
+      <Flipbook
+        ref={flipbookRef}
+        {...args}
+        startPage={page}
+        onPageFlip={handlePageFlip}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          zIndex: 10,
+        }}
+      >
+        <button
+          onClick={() => flipbookRef.current?.flipPrev()}
+          style={{
+            padding: "8px 16px",
+            borderRadius: 4,
+            border: "none",
+            background: "#4ECDC4",
+            color: "white",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Prev (Animated)
+        </button>
+        <button
+          onClick={() => flipbookRef.current?.flipNext()}
+          style={{
+            padding: "8px 16px",
+            borderRadius: 4,
+            border: "none",
+            background: "#45B7D1",
+            color: "white",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Next (Animated)
+        </button>
+        <label style={{ color: "#333", fontWeight: 600, marginTop: 8 }}>
+          Go to Page (Animated):
+          <input
+            type="number"
+            min={1}
+            max={args.pages.length}
+            value={page}
+            onChange={(e) => setPage(Number(e.target.value))}
+            style={{
+              marginLeft: 8,
+              width: 60,
+              padding: "4px 8px",
+              borderRadius: 4,
+              border: "1px solid #ccc",
+              fontWeight: 600,
+            }}
+          />
+        </label>
+      </div>
+    </div>
+  );
+};
+
 export const Default: Story = {
+  render: (args) => <DefaultFlipbookDemo {...args} />,
   args: {
     pages: placeholderPages,
     width: "834",
     height: "1112",
     skin: "dark",
+    startPage: 1,
   },
   decorators: [withContainer],
 };
@@ -917,102 +1016,105 @@ captions, links, or custom UI components.
 // Interactive Stories
 // ============================================================================
 
-export const ProgrammaticControl: Story = {
-  render: () => {
-    const flipbookRef = useRef<FlipbookInstance>(null);
+// Wrapper component for ProgrammaticControl story to use hooks properly
+const ProgrammaticControlDemo: React.FC = () => {
+  const flipbookRef = useRef<FlipbookInstance>(null);
 
-    return (
-      <div>
-        <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
-          <button
-            onClick={() => flipbookRef.current?.firstPage()}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "4px",
-              border: "1px solid #4ECDC4",
-              background: "#4ECDC4",
-              color: "white",
-              cursor: "pointer",
-            }}
-          >
-            First Page
-          </button>
-          <button
-            onClick={() => flipbookRef.current?.prevPage()}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "4px",
-              border: "1px solid #45B7D1",
-              background: "#45B7D1",
-              color: "white",
-              cursor: "pointer",
-            }}
-          >
-            Previous
-          </button>
-          <button
-            onClick={() => flipbookRef.current?.nextPage()}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "4px",
-              border: "1px solid #45B7D1",
-              background: "#45B7D1",
-              color: "white",
-              cursor: "pointer",
-            }}
-          >
-            Next
-          </button>
-          <button
-            onClick={() => flipbookRef.current?.lastPage()}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "4px",
-              border: "1px solid #4ECDC4",
-              background: "#4ECDC4",
-              color: "white",
-              cursor: "pointer",
-            }}
-          >
-            Last Page
-          </button>
-          <button
-            onClick={() => flipbookRef.current?.goToPage(3)}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "4px",
-              border: "1px solid #96CEB4",
-              background: "#96CEB4",
-              color: "white",
-              cursor: "pointer",
-            }}
-          >
-            Go to Page 3
-          </button>
-          <button
-            onClick={() => flipbookRef.current?.toggleFullscreen()}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "4px",
-              border: "1px solid #DDA0DD",
-              background: "#DDA0DD",
-              color: "white",
-              cursor: "pointer",
-            }}
-          >
-            Toggle Fullscreen
-          </button>
-        </div>
-        <Flipbook
-          ref={flipbookRef}
-          pages={generateSamplePages(8)}
-          width={800}
-          height={500}
-          skin="dark"
-        />
+  return (
+    <div>
+      <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
+        <button
+          onClick={() => flipbookRef.current?.flipToFirst()}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "4px",
+            border: "1px solid #4ECDC4",
+            background: "#4ECDC4",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
+          First Page (Animated)
+        </button>
+        <button
+          onClick={() => flipbookRef.current?.flipPrev()}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "4px",
+            border: "1px solid #45B7D1",
+            background: "#45B7D1",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
+          Previous (Animated)
+        </button>
+        <button
+          onClick={() => flipbookRef.current?.flipNext()}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "4px",
+            border: "1px solid #45B7D1",
+            background: "#45B7D1",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
+          Next (Animated)
+        </button>
+        <button
+          onClick={() => flipbookRef.current?.flipToLast()}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "4px",
+            border: "1px solid #4ECDC4",
+            background: "#4ECDC4",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
+          Last Page (Animated)
+        </button>
+        <button
+          onClick={() => flipbookRef.current?.flipToPage(3)}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "4px",
+            border: "1px solid #96CEB4",
+            background: "#96CEB4",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
+          Go to Page 3 (Animated)
+        </button>
+        <button
+          onClick={() => flipbookRef.current?.toggleFullscreen()}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "4px",
+            border: "1px solid #DDA0DD",
+            background: "#DDA0DD",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
+          Toggle Fullscreen
+        </button>
       </div>
-    );
-  },
+      <Flipbook
+        ref={flipbookRef}
+        pages={generateSamplePages(8)}
+        width={800}
+        height={500}
+        skin="dark"
+      />
+    </div>
+  );
+};
+
+export const ProgrammaticControl: Story = {
+  render: () => <ProgrammaticControlDemo />,
   args: {
     pages: generateSamplePages(8),
     width: 800,
@@ -1293,6 +1395,7 @@ async function loadPdfAsPages(
 
     // Render page to canvas
     await page.render({
+      canvas: canvas,
       canvasContext: context,
       viewport: viewport,
     }).promise;
@@ -1443,6 +1546,7 @@ const PdfFlipbookLoader: React.FC<{
 
           // Render page
           await page.render({
+            canvas: canvas,
             canvasContext: context,
             viewport: viewport,
           }).promise;

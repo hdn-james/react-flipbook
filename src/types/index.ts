@@ -528,12 +528,19 @@ export interface FlipbookEventMap {
 
 // Flipbook instance methods (imperative handle)
 export interface FlipbookInstance {
-  // Navigation
+  // Navigation (instant, no animation)
   nextPage: () => void;
   prevPage: () => void;
   firstPage: () => void;
   lastPage: () => void;
   goToPage: (page: number) => void;
+
+  // Animated navigation (WebGL flip animation)
+  flipNext: () => void;
+  flipPrev: () => void;
+  flipToPage: (page: number) => void;
+  flipToFirst: () => void;
+  flipToLast: () => void;
 
   // Zoom
   zoomIn: () => void;

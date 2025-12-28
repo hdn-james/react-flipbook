@@ -252,7 +252,19 @@ const Flipbook = forwardRef<FlipbookInstance, FlipbookProps>(
       [currentPage, onPageFlip],
     );
 
-    useImperativeHandle(ref, getInstance, [getInstance]);
+    // Expose imperative animated navigation methods
+    useImperativeHandle(
+      ref,
+      () => ({
+        ...getInstance(),
+        flipNext: () => webglRef.current?.flipNext(),
+        flipPrev: () => webglRef.current?.flipPrev(),
+        flipToPage: (page: number) => webglRef.current?.flipToPage(page),
+        flipToFirst: () => webglRef.current?.flipToFirst(),
+        flipToLast: () => webglRef.current?.flipToLast(),
+      }),
+      [getInstance],
+    );
 
     const handlePageInputChange = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {

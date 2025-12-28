@@ -31,6 +31,7 @@ interface PDFPageViewport {
 }
 
 interface PDFRenderParams {
+  canvas: HTMLCanvasElement;
   canvasContext: CanvasRenderingContext2D;
   viewport: PDFPageViewport;
   enableWebGL?: boolean;
@@ -272,6 +273,7 @@ export function usePdfLoader(
 
         // Render page
         await page.render({
+          canvas,
           canvasContext: context,
           viewport,
         }).promise;

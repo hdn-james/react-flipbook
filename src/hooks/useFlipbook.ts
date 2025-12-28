@@ -283,6 +283,12 @@ export function useFlipbook(options: UseFlipbookOptions): UseFlipbookReturn {
       firstPage,
       lastPage,
       goToPage,
+      // Animated navigation (no-ops for hook, real impl in Flipbook component)
+      flipNext: () => {},
+      flipPrev: () => {},
+      flipToPage: (_page: number) => {},
+      flipToFirst: () => {},
+      flipToLast: () => {},
       zoomIn,
       zoomOut,
       zoomTo,

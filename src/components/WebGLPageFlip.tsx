@@ -459,7 +459,7 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
           const cosR = Math.cos(rotationAngle);
           const sinR = Math.sin(rotationAngle);
 
-          let finalX = distFromSpine * cosR;
+          const finalX = distFromSpine * cosR;
           let finalZ = distFromSpine * sinR;
 
           // Edge curl
@@ -1462,9 +1462,9 @@ const WebGLPageFlip = forwardRef<WebGLPageFlipInstance, WebGLPageFlipProps>(
         if (target === current) return;
 
         if (target > current) {
-          startFlip("next");
+          startFlip("next", true, target);
         } else {
-          startFlip("prev");
+          startFlip("prev", true, target);
         }
       },
       [numPages, startFlip],
