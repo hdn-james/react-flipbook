@@ -326,6 +326,9 @@ jobs:
           MERGE_COMMIT="${{ github.event.pull_request.merge_commit_sha }}"
           MAIN_REF="origin/main"
 
+          # Fetch main branch to ensure we have the latest
+          git fetch origin main
+
           # Ensure the main branch ref exists
           if ! git rev-parse --verify "$MAIN_REF" >/dev/null 2>&1; then
             echo "::error::Unable to find main branch ref ($MAIN_REF). Aborting release."
@@ -337,14 +340,8 @@ jobs:
             echo "::error::Merge commit $MERGE_COMMIT is not an ancestor of $MAIN_REF. Aborting tag creation."
             exit 1
           fi
-      - name: Verify merge commit is on main
-        run: |
-          MERGE_COMMIT="${{ github.event.pull_request.merge_commit_sha }}"
 
-          # Fetch main branch to ensure we have the latest
-          git fetch origin main
-
-          # Check if merge commit is reachable from main
+          # Additional check: verify merge commit is reachable from main
           if ! git branch -r --contains "$MERGE_COMMIT" | grep -q "origin/main"; then
             echo "::error::Merge commit $MERGE_COMMIT is not on origin/main. Aborting tag creation."
             exit 1
@@ -394,6 +391,12 @@ jobs:
       - name: Exit if release already exists
         if: steps.check_tag.outputs.exists == 'true' && steps.check_release.outputs.release_exists == 'true'
         run: |
+          {
+            echo "## ⏭️ Release Already Exists"
+            echo ""
+            echo "Release \`${{ steps.get_version.outputs.version }}\` already exists for the current tag."
+            echo "No new tag or release will be created in this run."
+          } >> "$GITHUB_STEP_SUMMARY"
           echo "Release already exists for tag ${{ steps.get_version.outputs.version }}. Nothing to do."
           exit 0
 
@@ -452,6 +455,7 @@ jobs:
           echo "Release notes generated"
 
       - name: Determine if prerelease
+        if: steps.check_tag.outputs.exists == 'false' || steps.check_release.outputs.release_exists != 'true'
         id: prerelease
         run: |
           VERSION="${{ steps.get_version.outputs.version_number }}"
@@ -475,11 +479,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Summary
+        if: steps.check_tag.outputs.exists == 'false' || steps.check_release.outputs.release_exists != 'true'
         run: |
+          IS_PRERELEASE="${{ steps.prerelease.outputs.is_prerelease }}"
+          IS_PRERELEASE="${IS_PRERELEASE:-false}"
           echo "## 🏷️ Release Created" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Version:** ${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Prerelease:** ${{ steps.prerelease.outputs.is_prerelease || 'false' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Prerelease:** ${IS_PRERELEASE}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Next Steps" >> $GITHUB_STEP_SUMMARY
           echo "The publish job will now automatically publish this version to npm." >> $GITHUB_STEP_SUMMARY
@@ -498,6 +505,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -521,7 +530,6 @@ jobs:
 
       - name: Run tests
         run: npm test
-        continue-on-error: true
         continue-on-error: true
 
       - name: Build package
@@ -577,6 +585,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
