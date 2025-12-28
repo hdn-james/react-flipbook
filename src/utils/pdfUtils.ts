@@ -309,6 +309,7 @@ async function renderPdfPage(
 
   // Render page to canvas
   await page.render({
+    canvas,
     canvasContext: context,
     viewport: viewport,
   }).promise;
