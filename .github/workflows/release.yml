@@ -83,8 +83,8 @@ jobs:
 
       - name: Configure Git
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions-bot@users.noreply.github.com"
+          git config user.name "react-flipbook-bot"
+          git config user.email "huynhdainhan242@gmail.com"
 
       - name: Install dependencies
         run: npm ci
@@ -431,8 +431,8 @@ jobs:
       - name: Configure Git
         if: steps.check_tag.outputs.exists == 'false'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions-bot@users.noreply.github.com"
+          git config user.name "react-flipbook-bot"
+          git config user.email "huynhdainhan242@gmail.com"
 
       - name: Create and push tag
         if: steps.check_tag.outputs.exists == 'false'
