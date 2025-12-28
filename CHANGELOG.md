@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.10 (2025-12-28)
+
+### 🐛 Bug Fixes
+- fix: use GH_PAT for release creation to trigger npm publish (#16) (2dc3966)
+
+
 ## v1.1.9 (2025-12-28)
 
 ### ✨ Features
