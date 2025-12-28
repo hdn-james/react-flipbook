@@ -295,7 +295,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
             echo "### 📝 Pull Request Created" >> $GITHUB_STEP_SUMMARY
-            echo "A pull request has been created for this release." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**PR URL:** ${{ steps.create_pr.outputs.pr_url }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Next steps:**" >> $GITHUB_STEP_SUMMARY
             echo "1. Review and merge the pull request" >> $GITHUB_STEP_SUMMARY
@@ -541,6 +542,8 @@ jobs:
 
       - name: Run linting
         run: npm run lint
+        # Linting uses continue-on-error to allow publishing even with minor style issues.
+        # Critical issues should be caught during PR review. Tests (below) must pass.
         continue-on-error: true
 
       - name: Run type checking
