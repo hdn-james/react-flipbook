@@ -344,8 +344,9 @@ jobs:
             exit 1
           fi
 
-          # Additional check: verify merge commit is reachable from main (exact match to avoid false positives)
-          if ! git branch -r --contains "$MERGE_COMMIT" | grep -E "^[[:space:]]*origin/main$" > /dev/null; then
+          # Additional check: verify merge commit is reachable from main
+          # Using simple grep pattern for compatibility across git versions
+          if ! git branch -r --contains "$MERGE_COMMIT" | grep -q "origin/main"; then
             echo "::error::Merge commit $MERGE_COMMIT is not on origin/main. Aborting tag creation."
             exit 1
           fi
@@ -401,7 +402,7 @@ jobs:
             echo "No new tag or release will be created in this run."
           } >> "$GITHUB_STEP_SUMMARY"
           echo "Release already exists for tag ${{ steps.get_version.outputs.version }}. Nothing to do."
-          exit 0
+          # Note: No exit here - subsequent steps have proper conditions to skip when release exists
 
       - name: Configure Git
         if: steps.check_tag.outputs.exists == 'false'
@@ -472,7 +473,9 @@ jobs:
           echo "Release notes generated (${NOTES_TRIMMED_LINES} lines)"
 
       - name: Determine if prerelease
-        if: (steps.check_tag.outputs.exists == 'false') || (steps.check_tag.outputs.exists == 'true' && steps.check_release.outputs.release_exists != 'true')
+        # Simplified condition: run if tag doesn't exist OR release doesn't exist
+        # When check_tag.exists is 'false', check_release step is skipped and release_exists is undefined (not 'true')
+        if: steps.check_tag.outputs.exists == 'false' || steps.check_release.outputs.release_exists != 'true'
         id: prerelease
         run: |
           VERSION="${{ steps.get_version.outputs.version_number }}"
@@ -483,7 +486,9 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        if: (steps.check_tag.outputs.exists == 'false') || (steps.check_tag.outputs.exists == 'true' && steps.check_release.outputs.release_exists != 'true')
+        # Simplified condition: run if tag doesn't exist OR release doesn't exist
+        # When check_tag.exists is 'false', check_release step is skipped and release_exists is undefined (not 'true')
+        if: steps.check_tag.outputs.exists == 'false' || steps.check_release.outputs.release_exists != 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
@@ -496,7 +501,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Summary
-        if: (steps.check_tag.outputs.exists == 'false') || (steps.check_tag.outputs.exists == 'true' && steps.check_release.outputs.release_exists != 'true')
+        # Simplified condition: run if tag doesn't exist OR release doesn't exist
+        if: steps.check_tag.outputs.exists == 'false' || steps.check_release.outputs.release_exists != 'true'
         run: |
           IS_PRERELEASE="${{ steps.prerelease.outputs.is_prerelease }}"
           IS_PRERELEASE="${IS_PRERELEASE:-false}"
@@ -514,6 +520,11 @@ jobs:
   # Job 3: Publish to npm (when GitHub release is published)
   # This job triggers on ANY published release. This is intentional to support
   # both workflow-created releases and manual releases.
+  #
+  # NOTE: For manual releases, ensure package.json version matches the release tag.
+  # The version check step (below) will fail if versions don't match, preventing
+  # publication of inconsistent versions. Manual releases should only be created
+  # after updating package.json via a PR.
   # =============================================================================
   publish-to-npm:
     if: github.event_name == 'release' && github.event.action == 'published'
@@ -551,7 +562,9 @@ jobs:
 
       - name: Run tests
         run: npm test
-        # Tests must pass before publishing to npm to avoid publishing broken code
+        # Tests must pass before publishing to npm to avoid publishing broken code.
+        # BREAKING CHANGE from previous behavior: Tests are now blocking (no continue-on-error).
+        # This is intentional to ensure published packages are not broken.
 
       - name: Build package
         run: npm run build
