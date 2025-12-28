@@ -20,6 +20,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -42,11 +43,32 @@ jobs:
         run: |
           if git rev-parse "${{ steps.get_version.outputs.version }}" >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
-            echo "Tag ${{ steps.get_version.outputs.version }} already exists"
+            echo "::warning::Tag ${{ steps.get_version.outputs.version }} already exists. Skipping release creation."
           else
             echo "exists=false" >> $GITHUB_OUTPUT
             echo "Tag ${{ steps.get_version.outputs.version }} does not exist"
           fi
+
+      - name: Check if release already exists
+        if: steps.check_tag.outputs.exists == 'true'
+        id: check_release
+        run: |
+          # Check if a GitHub release already exists for this tag
+          RELEASE_EXISTS=$(gh release view "${{ steps.get_version.outputs.version }}" --json tagName 2>/dev/null && echo "true" || echo "false")
+          if [ "$RELEASE_EXISTS" == "true" ]; then
+            echo "::warning::Release ${{ steps.get_version.outputs.version }} already exists. Exiting."
+            echo "release_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "release_exists=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Exit if release already exists
+        if: steps.check_tag.outputs.exists == 'true' && steps.check_release.outputs.release_exists == 'true'
+        run: |
+          echo "Release already exists for tag ${{ steps.get_version.outputs.version }}. Nothing to do."
+          exit 0
 
       - name: Configure Git
         if: steps.check_tag.outputs.exists == 'false'
@@ -61,17 +83,19 @@ jobs:
           git push origin ${{ steps.get_version.outputs.version }}
 
       - name: Generate release notes from CHANGELOG
+        if: steps.check_release.outputs.release_exists != 'true'
         id: release_notes
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           VERSION_NUMBER="${{ steps.get_version.outputs.version_number }}"
 
           # Extract release notes for this version from CHANGELOG.md
-          # Look for the section starting with this version
+          # Use word boundaries to match exact version number
           NOTES=$(awk -v ver="$VERSION_NUMBER" '
             /^## / {
               if (found) exit
-              if (index($0, ver) > 0) found=1
+              # Match exact version with word boundaries (space, parenthesis, or end of line)
+              if ($0 ~ ("^## .*[^0-9]" ver "([^0-9]|$)") || $0 ~ ("^## " ver "([^0-9]|$)")) found=1
             }
             found && !/^## / {print}
           ' CHANGELOG.md)
@@ -86,6 +110,7 @@ jobs:
           echo "Release notes generated"
 
       - name: Determine if prerelease
+        if: steps.check_release.outputs.release_exists != 'true'
         id: prerelease
         run: |
           VERSION="${{ steps.get_version.outputs.version_number }}"
@@ -96,6 +121,7 @@ jobs:
           fi
 
       - name: Create GitHub Release
+        if: steps.check_release.outputs.release_exists != 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.get_version.outputs.version }}

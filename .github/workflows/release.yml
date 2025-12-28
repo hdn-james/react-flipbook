@@ -208,42 +208,45 @@ jobs:
           git push origin "$BRANCH_NAME"
           echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
 
-      - name: Create Pull Request
+      - name: Create Pull Request using GitHub CLI
         if: ${{ github.event.inputs.dry_run != 'true' }}
         id: create_pr
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ steps.create_branch.outputs.branch_name }}
-          base: main
-          title: "chore(release): ${{ steps.bump_version.outputs.new_version }}"
-          body: |
-            ## Release ${{ steps.bump_version.outputs.new_version }}
-
-            This PR was automatically created by the release workflow.
-
-            ### Changes
-            - Version bump: `${{ steps.current_version.outputs.version }}` → `${{ steps.bump_version.outputs.new_version }}`
-            - Updated CHANGELOG.md
-
-            ### Release Notes
-            $(cat release_notes.md)
-
-            ---
-            **After merging this PR:**
-            1. A GitHub Release will be created automatically
-            2. The package will be published to npm
-
-            > ⚠️ Please review and merge this PR to complete the release.
-          labels: |
-            release
-            automated
-          draft: false
-
-      - name: Output PR URL
-        if: ${{ github.event.inputs.dry_run != 'true' && steps.create_pr.outputs.pull-request-url }}
         run: |
-          echo "::notice::Pull Request created: ${{ steps.create_pr.outputs.pull-request-url }}"
+          # Read release notes content
+          RELEASE_NOTES=$(cat release_notes.md)
+
+          # Create PR body
+          PR_BODY="## Release ${{ steps.bump_version.outputs.new_version }}
+
+          This PR was automatically created by the release workflow.
+
+          ### Changes
+          - Version bump: \`${{ steps.current_version.outputs.version }}\` → \`${{ steps.bump_version.outputs.new_version }}\`
+          - Updated CHANGELOG.md
+
+          ### Release Notes
+          ${RELEASE_NOTES}
+
+          ---
+          **After merging this PR:**
+          1. A GitHub Release will be created automatically
+          2. The package will be published to npm
+
+          > ⚠️ Please review and merge this PR to complete the release."
+
+          # Create the PR using GitHub CLI
+          PR_URL=$(gh pr create \
+            --base main \
+            --head "${{ steps.create_branch.outputs.branch_name }}" \
+            --title "chore(release): ${{ steps.bump_version.outputs.new_version }}" \
+            --body "$PR_BODY" \
+            --label "release" \
+            --label "automated" 2>&1 || true)
+
+          echo "pr_url=${PR_URL}" >> $GITHUB_OUTPUT
+          echo "::notice::Pull Request created: ${PR_URL}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to npm (dry run)
         if: ${{ github.event.inputs.dry_run == 'true' }}
@@ -275,5 +278,5 @@ jobs:
             echo "2. After merge, the publish workflow will automatically publish to npm" >> $GITHUB_STEP_SUMMARY
           fi
 
-  # This job runs after the PR is merged (triggered by the publish.yml on release)
-  # The actual npm publish happens in publish.yml when a GitHub Release is created
+# Note: The actual npm publish happens in .github/workflows/publish.yml
+# when a GitHub Release is created after the release PR is merged.
