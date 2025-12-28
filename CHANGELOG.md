@@ -2,6 +2,18 @@
 
 ## v1.1.7 (2025-12-28)
 
+### ✨ Features
+- feat(worker): use latest pdfjs-dist (bc8cbe8)
+
+### 🐛 Bug Fixes
+- fix(type): resolve typecheck error (facba1d)
+
+### 📦 Other Changes
+- update changelog and pdfjs version (2fef8eb)
+
+
+## v1.1.7 (2025-12-28)
+
 ### 🔧 Maintenance
 - chore: upgrade `pdfjs-dist` to 5.4.449 (latest)
 

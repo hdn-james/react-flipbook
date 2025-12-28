@@ -1,6 +1,6 @@
 {
   "name": "react-3d-flipbook",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "A modern React library for creating beautiful, interactive 3D flipbooks with realistic page-turning effects powered by WebGL and Three.js. Supports PDF loading, automatic page sizing, and customizable camera controls.",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
