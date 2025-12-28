@@ -323,6 +323,22 @@ jobs:
       - name: Verify merge commit is on main
         run: |
           MERGE_COMMIT="${{ github.event.pull_request.merge_commit_sha }}"
+          MAIN_REF="origin/main"
+
+          # Ensure the main branch ref exists
+          if ! git rev-parse --verify "$MAIN_REF" >/dev/null 2>&1; then
+            echo "::error::Unable to find main branch ref ($MAIN_REF). Aborting release."
+            exit 1
+          fi
+
+          # Verify the merge commit is an ancestor of main
+          if ! git merge-base --is-ancestor "$MERGE_COMMIT" "$MAIN_REF"; then
+            echo "::error::Merge commit $MERGE_COMMIT is not an ancestor of $MAIN_REF. Aborting tag creation."
+            exit 1
+          fi
+      - name: Verify merge commit is on main
+        run: |
+          MERGE_COMMIT="${{ github.event.pull_request.merge_commit_sha }}"
 
           # Fetch main branch to ensure we have the latest
           git fetch origin main
