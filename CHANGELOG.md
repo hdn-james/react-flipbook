@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.7 (2025-12-28)
+
+### 🔧 Maintenance
+- chore: upgrade `pdfjs-dist` to 5.4.449 (latest)
+
 ## v1.1.6 (2025-12-28)
 
 ### 🐛 Bug Fixes

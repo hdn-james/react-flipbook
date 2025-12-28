@@ -78,7 +78,7 @@
     }
   },
   "optionalDependencies": {
-    "pdfjs-dist": "^4.0.0"
+    "pdfjs-dist": "^5.4.449"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",
