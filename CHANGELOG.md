@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.6 (2025-12-28)
+
+### 🐛 Bug Fixes
+- fix: CSS files missing during build (660d136)
+
+
 ## v1.1.5 (2025-12-27)
 
 ### 🐛 Bug Fixes
