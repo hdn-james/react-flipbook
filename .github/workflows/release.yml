@@ -28,6 +28,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
   id-token: write # Required for npm Trusted Publishers (OIDC)
 
 jobs:
@@ -196,31 +197,53 @@ jobs:
 
           echo "Changelog generated successfully"
 
-      - name: Commit version bump and changelog
+      - name: Create release branch and commit
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        id: create_branch
         run: |
+          BRANCH_NAME="release/${{ steps.bump_version.outputs.new_version }}"
+          git checkout -b "$BRANCH_NAME"
           git add package.json package-lock.json CHANGELOG.md
           git commit -m "chore(release): ${{ steps.bump_version.outputs.new_version }}"
-          git tag ${{ steps.bump_version.outputs.new_version }}
+          git push origin "$BRANCH_NAME"
+          echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
 
-      - name: Push changes
+      - name: Create Pull Request
         if: ${{ github.event.inputs.dry_run != 'true' }}
-        run: |
-          git push origin HEAD:${{ github.ref_name }}
-          git push origin ${{ steps.bump_version.outputs.new_version }}
-
-      - name: Create GitHub Release
-        if: ${{ github.event.inputs.dry_run != 'true' }}
-        uses: softprops/action-gh-release@v1
+        id: create_pr
+        uses: peter-evans/create-pull-request@v6
         with:
-          tag_name: ${{ steps.bump_version.outputs.new_version }}
-          name: ${{ steps.bump_version.outputs.new_version }}
-          body_path: release_notes.md
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.create_branch.outputs.branch_name }}
+          base: main
+          title: "chore(release): ${{ steps.bump_version.outputs.new_version }}"
+          body: |
+            ## Release ${{ steps.bump_version.outputs.new_version }}
+
+            This PR was automatically created by the release workflow.
+
+            ### Changes
+            - Version bump: `${{ steps.current_version.outputs.version }}` → `${{ steps.bump_version.outputs.new_version }}`
+            - Updated CHANGELOG.md
+
+            ### Release Notes
+            $(cat release_notes.md)
+
+            ---
+            **After merging this PR:**
+            1. A GitHub Release will be created automatically
+            2. The package will be published to npm
+
+            > ⚠️ Please review and merge this PR to complete the release.
+          labels: |
+            release
+            automated
           draft: false
-          prerelease: ${{ contains(github.event.inputs.version_type, 'pre') }}
-          generate_release_notes: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Output PR URL
+        if: ${{ github.event.inputs.dry_run != 'true' && steps.create_pr.outputs.pull-request-url }}
+        run: |
+          echo "::notice::Pull Request created: ${{ steps.create_pr.outputs.pull-request-url }}"
 
       - name: Publish to npm (dry run)
         if: ${{ github.event.inputs.dry_run == 'true' }}
@@ -234,13 +257,6 @@ jobs:
           echo "=== Changelog preview ==="
           head -50 CHANGELOG.md
 
-      # Trusted Publishers: No NPM_TOKEN needed!
-      # OIDC token is automatically used for authentication
-      # Provenance is automatically generated
-      - name: Publish to npm
-        if: ${{ github.event.inputs.dry_run != 'true' }}
-        run: npm publish --access public
-
       - name: Summary
         run: |
           echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
@@ -251,9 +267,13 @@ jobs:
           echo "- **Dry run:** ${{ github.event.inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
-            echo "### 📦 Published to npm" >> $GITHUB_STEP_SUMMARY
-            echo "[View on npm](https://www.npmjs.com/package/react-3d-flipbook/v/${{ steps.bump_version.outputs.new_version }})" >> $GITHUB_STEP_SUMMARY
+            echo "### 📝 Pull Request Created" >> $GITHUB_STEP_SUMMARY
+            echo "A pull request has been created for this release." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### 🏷️ GitHub Release" >> $GITHUB_STEP_SUMMARY
-            echo "[View release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.bump_version.outputs.new_version }})" >> $GITHUB_STEP_SUMMARY
+            echo "**Next steps:**" >> $GITHUB_STEP_SUMMARY
+            echo "1. Review and merge the pull request" >> $GITHUB_STEP_SUMMARY
+            echo "2. After merge, the publish workflow will automatically publish to npm" >> $GITHUB_STEP_SUMMARY
           fi
+
+  # This job runs after the PR is merged (triggered by the publish.yml on release)
+  # The actual npm publish happens in publish.yml when a GitHub Release is created
