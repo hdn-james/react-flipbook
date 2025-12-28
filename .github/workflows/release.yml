@@ -265,7 +265,7 @@ jobs:
           1. A GitHub Release will be created automatically
           2. The package will be published to npm
 
-          > ⚠️ Please review and merge this PR to complete the release.
+          > ✅ Auto-merge is enabled. This PR will be merged automatically once all checks pass.
           EOF
 
           # Create the PR (without labels to avoid failure if they don't exist)
@@ -277,6 +277,15 @@ jobs:
 
           echo "pr_url=${PR_URL}" >> $GITHUB_OUTPUT
           echo "::notice::Pull Request created: ${PR_URL}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for release PR
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          # Enable auto-merge using squash merge strategy
+          gh pr merge "${{ steps.create_pr.outputs.pr_url }}" --auto --squash
+          echo "::notice::Auto-merge enabled for release PR"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
