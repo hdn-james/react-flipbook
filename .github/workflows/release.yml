@@ -304,17 +304,35 @@ jobs:
 
   # =============================================================================
   # Job 2: Create GitHub Release (when release PR is merged)
+  # Security: Only runs for PRs from the same repository, not forks
   # =============================================================================
   create-github-release:
-    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/')
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release/') &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
+
+      - name: Verify merge commit is on main
+        run: |
+          MERGE_COMMIT="${{ github.event.pull_request.merge_commit_sha }}"
+
+          # Fetch main branch to ensure we have the latest
+          git fetch origin main
+
+          # Check if merge commit is reachable from main
+          if ! git branch -r --contains "$MERGE_COMMIT" | grep -q "origin/main"; then
+            echo "::error::Merge commit $MERGE_COMMIT is not on origin/main. Aborting tag creation."
+            exit 1
+          fi
+          echo "✅ Verified: Merge commit is on main branch"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -334,9 +352,6 @@ jobs:
       - name: Check if tag already exists
         id: check_tag
         run: |
-          # Initialize release_exists to false by default
-          echo "release_exists=false" >> $GITHUB_OUTPUT
-
           if git rev-parse "${{ steps.get_version.outputs.version }}" >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
             echo "::warning::Tag ${{ steps.get_version.outputs.version }} already exists."
@@ -378,19 +393,18 @@ jobs:
           git push origin ${{ steps.get_version.outputs.version }}
 
       - name: Generate release notes from CHANGELOG
-        if: steps.check_tag.outputs.exists == 'false' || steps.check_release.outputs.release_exists != 'true'
         id: release_notes
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           VERSION_NUMBER="${{ steps.get_version.outputs.version_number }}"
 
           # Extract release notes for this version from CHANGELOG.md
-          # Use precise matching to avoid partial version matches (e.g., 1.0 vs 1.0.1)
+          # Match heading for this version while avoiding partial numeric matches
           NOTES=$(awk -v ver="$VERSION_NUMBER" '
             /^## / {
               if (found) exit
-              # Match exact version with word boundaries (space, parenthesis, or end of line)
-              if ($0 ~ ("^## .*[^0-9.]" ver "([^0-9.]|$)") || $0 ~ ("^## " ver "([^0-9.]|$)") || $0 ~ ("^## v" ver "([^0-9.]|$)")) found=1
+              # Match version with optional v prefix, avoiding partial matches
+              if ($0 ~ ("^##[[:space:]]+v?" ver "([^0-9.]|$)")) found=1
             }
             found && !/^## / {print}
           ' CHANGELOG.md)
@@ -405,7 +419,6 @@ jobs:
           echo "Release notes generated"
 
       - name: Determine if prerelease
-        if: steps.check_tag.outputs.exists == 'false' || steps.check_release.outputs.release_exists != 'true'
         id: prerelease
         run: |
           VERSION="${{ steps.get_version.outputs.version_number }}"
@@ -429,7 +442,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Summary
-        if: steps.check_tag.outputs.exists == 'false' || steps.check_release.outputs.release_exists != 'true'
         run: |
           echo "## 🏷️ Release Created" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -475,7 +487,6 @@ jobs:
         run: npm run typecheck
 
       - name: Run tests
-        id: tests
         run: npm test
 
       - name: Build package
