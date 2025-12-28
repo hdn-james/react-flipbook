@@ -319,6 +319,8 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
+          # Note: For protected branches requiring verified signatures, you may need
+          # to use a dedicated bot token (secrets.RELEASE_BOT_TOKEN) with GPG signing
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify merge commit is on main
@@ -341,8 +343,8 @@ jobs:
             exit 1
           fi
 
-          # Additional check: verify merge commit is reachable from main
-          if ! git branch -r --contains "$MERGE_COMMIT" | grep -q "origin/main"; then
+          # Additional check: verify merge commit is reachable from main (exact match to avoid false positives)
+          if ! git branch -r --contains "$MERGE_COMMIT" | grep -E "^[[:space:]]*origin/main$" > /dev/null; then
             echo "::error::Merge commit $MERGE_COMMIT is not on origin/main. Aborting tag creation."
             exit 1
           fi
@@ -414,17 +416,23 @@ jobs:
           # Try to create the tag. If this fails because the tag was created
           # concurrently (e.g., by another workflow or a manual action),
           # handle it gracefully instead of failing the job.
-          if git tag "$TAG"; then
+          # Capture the exit code to distinguish between "tag exists" vs other errors
+          set +e
+          git tag "$TAG" 2>&1
+          TAG_EXIT_CODE=$?
+          set -e
+
+          if [ $TAG_EXIT_CODE -eq 0 ]; then
             echo "Tag $TAG created locally."
             git push origin "$TAG"
           else
-            echo "::warning::Failed to create tag $TAG. It may have been created concurrently. Fetching tags to verify."
+            echo "::warning::Failed to create tag $TAG (exit code: $TAG_EXIT_CODE). Checking if it already exists..."
             git fetch --tags
             if git rev-parse "$TAG" >/dev/null 2>&1; then
-              echo "Tag $TAG now exists after fetch. Assuming it was created elsewhere and continuing without pushing."
-              exit 0
+              echo "Tag $TAG now exists after fetch. Assuming it was created elsewhere and continuing."
+              # This is acceptable - tag exists, we can proceed
             else
-              echo "::error::Failed to create or find tag $TAG after fetch."
+              echo "::error::Failed to create tag $TAG and it doesn't exist. This may be a permissions issue."
               exit 1
             fi
           fi
@@ -439,23 +447,31 @@ jobs:
           NOTES=$(awk -v ver="$VERSION_NUMBER" '
             /^## / {
               if (found) exit
-              # Match version with optional v prefix, avoiding partial matches
-              if ($0 ~ ("^##[[:space:]]+v?" ver "([^0-9.]|$)")) found=1
+              # Match version with optional v prefix, allowing optional space and avoiding partial matches
+              if ($0 ~ ("^##[[:space:]]*v?" ver "([^0-9.]|$)")) found=1
             }
             found && !/^## / {print}
           ' CHANGELOG.md)
 
-          # If no notes found, use a default message
-          if [ -z "$NOTES" ]; then
+          # Validate extracted notes
+          NOTES_TRIMMED_LINES=$(printf '%s\n' "$NOTES" | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')
+          NOTES_CHARS=${#NOTES}
+
+          if [ "$NOTES_TRIMMED_LINES" -eq 0 ]; then
+            echo "No non-empty release notes found for ${VERSION_NUMBER}, using default message."
+            NOTES="Release ${VERSION}"
+          elif [ "$NOTES_CHARS" -gt 4000 ] || [ "$NOTES_TRIMMED_LINES" -gt 300 ]; then
+            echo "::warning::Extracted release notes are unusually long (${NOTES_TRIMMED_LINES} lines, ${NOTES_CHARS} chars)."
+            echo "Falling back to a concise default message to avoid including the entire CHANGELOG."
             NOTES="Release ${VERSION}"
           fi
 
           # Save to file for the release action
           echo "$NOTES" > release_notes.md
-          echo "Release notes generated"
+          echo "Release notes generated (${NOTES_TRIMMED_LINES} lines)"
 
       - name: Determine if prerelease
-        if: steps.check_tag.outputs.exists == 'false' || steps.check_release.outputs.release_exists != 'true'
+        if: (steps.check_tag.outputs.exists == 'false') || (steps.check_tag.outputs.exists == 'true' && steps.check_release.outputs.release_exists != 'true')
         id: prerelease
         run: |
           VERSION="${{ steps.get_version.outputs.version_number }}"
@@ -466,7 +482,7 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        if: steps.check_tag.outputs.exists == 'false' || steps.check_release.outputs.release_exists != 'true'
+        if: (steps.check_tag.outputs.exists == 'false') || (steps.check_tag.outputs.exists == 'true' && steps.check_release.outputs.release_exists != 'true')
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
@@ -479,7 +495,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Summary
-        if: steps.check_tag.outputs.exists == 'false' || steps.check_release.outputs.release_exists != 'true'
+        if: (steps.check_tag.outputs.exists == 'false') || (steps.check_tag.outputs.exists == 'true' && steps.check_release.outputs.release_exists != 'true')
         run: |
           IS_PRERELEASE="${{ steps.prerelease.outputs.is_prerelease }}"
           IS_PRERELEASE="${IS_PRERELEASE:-false}"
@@ -501,6 +517,8 @@ jobs:
   publish-to-npm:
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
+    # Consider adding environment protection for production npm publishes:
+    # environment: npm-publish
 
     steps:
       - name: Checkout repository
@@ -530,7 +548,7 @@ jobs:
 
       - name: Run tests
         run: npm test
-        continue-on-error: true
+        # Tests must pass before publishing to npm to avoid publishing broken code
 
       - name: Build package
         run: npm run build
