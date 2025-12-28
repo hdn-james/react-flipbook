@@ -406,9 +406,25 @@ jobs:
       - name: Create and push tag
         if: steps.check_tag.outputs.exists == 'false'
         run: |
-          git tag ${{ steps.get_version.outputs.version }}
-          git push origin ${{ steps.get_version.outputs.version }}
+          TAG="${{ steps.get_version.outputs.version }}"
 
+          # Try to create the tag. If this fails because the tag was created
+          # concurrently (e.g., by another workflow or a manual action),
+          # handle it gracefully instead of failing the job.
+          if git tag "$TAG"; then
+            echo "Tag $TAG created locally."
+            git push origin "$TAG"
+          else
+            echo "::warning::Failed to create tag $TAG. It may have been created concurrently. Fetching tags to verify."
+            git fetch --tags
+            if git rev-parse "$TAG" >/dev/null 2>&1; then
+              echo "Tag $TAG now exists after fetch. Assuming it was created elsewhere and continuing without pushing."
+              exit 0
+            else
+              echo "::error::Failed to create or find tag $TAG after fetch."
+              exit 1
+            fi
+          fi
       - name: Generate release notes from CHANGELOG
         id: release_notes
         run: |
