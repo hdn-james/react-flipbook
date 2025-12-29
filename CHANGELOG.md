@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.11 (2025-12-29)
+
+### 🐛 Bug Fixes
+- fix: update repository URLs to match actual GitHub repo name (#18) (60901f9)
+
+
 ## v1.1.10 (2025-12-28)
 
 ### 🐛 Bug Fixes
