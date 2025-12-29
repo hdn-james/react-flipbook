@@ -37,12 +37,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hdn-james/react-3d-flipbook.git"
+    "url": "git+https://github.com/hdn-james/react-flipbook.git"
   },
   "bugs": {
-    "url": "https://github.com/hdn-james/react-3d-flipbook/issues"
+    "url": "https://github.com/hdn-james/react-flipbook/issues"
   },
-  "homepage": "https://github.com/hdn-james/react-3d-flipbook#readme",
+  "homepage": "https://github.com/hdn-james/react-flipbook#readme",
   "keywords": [
     "react",
     "flipbook",
