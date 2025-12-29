@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.1.12 (2025-12-29)
+
+### ✨ Features
+- feat: add manual Storybook deploy workflow (#20) (1871eb7)
+
+### 📚 Documentation
+- docs: add Storybook link to README and GitHub Actions guide to CONTRIBUTING (#21) (6baa790)
+
+
 ## v1.1.11 (2025-12-29)
 
 ### 🐛 Bug Fixes
