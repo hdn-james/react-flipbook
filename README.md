@@ -1,6 +1,11 @@
 # React 3D Flipbook
 
+[![npm version](https://img.shields.io/npm/v/react-3d-flipbook.svg)](https://www.npmjs.com/package/react-3d-flipbook)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A modern, feature-rich React library for creating beautiful, interactive 3D flipbooks with realistic page-turning effects powered by WebGL and Three.js.
+
+📚 **[Live Demo & Documentation (Storybook)](https://hdn-james.github.io/react-flipbook/)**
 
 ---
 
@@ -971,13 +976,17 @@ import type {
 
 ## Contributing
 
-Contributions are welcome! Please fork, branch, and submit a PR.
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our development workflow, commit conventions, and release process.
+
+### Quick Start
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Commit changes: `git commit -am 'Add new feature'`
-4. Push to branch: `git push origin feature/my-feature`
+2. Create a feature branch: `git checkout -b feat/my-feature`
+3. Commit changes following [Conventional Commits](https://www.conventionalcommits.org/): `git commit -m 'feat: add new feature'`
+4. Push to branch: `git push origin feat/my-feature`
 5. Submit a Pull Request
+
+See the [Contributing Guide](CONTRIBUTING.md) for more details on GitHub Actions workflows and the automated release process.
 
 ---
 

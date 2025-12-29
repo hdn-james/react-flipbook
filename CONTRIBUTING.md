@@ -9,6 +9,8 @@ Thank you for your interest in contributing to React 3D Flipbook! This document 
 - [Development Workflow](#development-workflow)
 - [Commit Message Convention](#commit-message-convention)
 - [Pull Request Process](#pull-request-process)
+- [GitHub Actions & CI/CD](#github-actions--cicd)
+- [Release Process](#release-process)
 - [Reporting Bugs](#reporting-bugs)
 - [Requesting Features](#requesting-features)
 
@@ -22,8 +24,8 @@ Please be respectful and considerate in all interactions. We are committed to pr
 
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/react-3d-flipbook.git
-   cd react-3d-flipbook
+   git clone https://github.com/YOUR_USERNAME/react-flipbook.git
+   cd react-flipbook
    ```
 
 3. **Install dependencies**:
@@ -167,6 +169,91 @@ Closes #42"
 - `fix(flipbook): correct page alignment in single-page mode`
 - `docs: add Storybook examples for custom styling`
 
+## GitHub Actions & CI/CD
+
+This project uses GitHub Actions for continuous integration and automated releases.
+
+### Workflows
+
+| Workflow | Trigger | Description |
+|----------|---------|-------------|
+| **CI** (`ci.yml`) | Push/PR to `main` | Runs linting, type checking, tests, and build |
+| **Release** (`release.yml`) | Manual dispatch | Creates a release PR with version bump |
+| **Deploy Storybook** (`deploy-storybook.yml`) | Manual dispatch | Deploys Storybook to GitHub Pages |
+
+### CI Checks
+
+Every pull request must pass the following checks before merging:
+
+```bash
+npm run lint        # ESLint code quality
+npm run typecheck   # TypeScript type checking
+npm test           # Jest unit tests
+npm run build      # Production build
+```
+
+### Branch Protection
+
+The `main` branch is protected with the following rules:
+- Require pull request reviews before merging
+- Require status checks to pass (CI workflow)
+- Require signed commits (GPG)
+- No direct pushes to `main`
+
+## Release Process
+
+Releases are automated via GitHub Actions. Here's how it works:
+
+### 1. Trigger a Release
+
+1. Go to **Actions** → **Release** workflow
+2. Click **"Run workflow"**
+3. Select the version bump type:
+   - `patch` (1.0.0 → 1.0.1) - Bug fixes
+   - `minor` (1.0.0 → 1.1.0) - New features
+   - `major` (1.0.0 → 2.0.0) - Breaking changes
+   - `prerelease` - Alpha/beta versions
+4. Click **"Run workflow"**
+
+### 2. Review the Release PR
+
+The workflow creates a release PR with:
+- Version bump in `package.json`
+- Updated `CHANGELOG.md` with conventional commit messages
+- Branch named `release/vX.Y.Z`
+
+Review and merge the PR when ready.
+
+### 3. Automated Release
+
+After merging, the workflow automatically:
+1. Creates a GPG-signed git tag
+2. Creates a GitHub Release with changelog
+3. Publishes the package to npm with provenance
+4. Deploys Storybook to GitHub Pages
+
+### Manual Storybook Deployment
+
+If you need to deploy Storybook manually:
+
+1. Go to **Actions** → **Deploy Storybook**
+2. Click **"Run workflow"**
+3. Enter the git ref (tag, branch, or SHA) to deploy
+4. Click **"Run workflow"**
+
+The Storybook will be available at: https://hdn-james.github.io/react-flipbook/
+
+### Required Secrets
+
+For maintainers setting up the repository:
+
+| Secret | Description |
+|--------|-------------|
+| `GH_PAT` | Personal Access Token with `repo` scope for triggering workflows |
+| `GPG_PRIVATE_KEY` | Base64-encoded GPG private key for commit signing |
+| `GPG_PASSPHRASE` | Passphrase for the GPG key |
+| `NPM_TOKEN` | npm access token (or use npm Trusted Publishers) |
+
 ## Reporting Bugs
 
 When reporting bugs, please include:
@@ -211,7 +298,14 @@ We use labels to categorize issues and PRs:
 
 If you have questions, feel free to:
 
-- Open a [GitHub Discussion](https://github.com/hdn-james/react-3d-flipbook/discussions)
+- Open a [GitHub Discussion](https://github.com/hdn-james/react-flipbook/discussions)
 - Open an issue with the `question` label
+
+## Resources
+
+- 📚 [Live Demo (Storybook)](https://hdn-james.github.io/react-flipbook/)
+- 📦 [npm Package](https://www.npmjs.com/package/react-3d-flipbook)
+- 🐛 [Issue Tracker](https://github.com/hdn-james/react-flipbook/issues)
+- 📖 [Changelog](./CHANGELOG.md)
 
 Thank you for contributing! 🎉
