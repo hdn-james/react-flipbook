@@ -624,6 +624,30 @@ jobs:
       - name: Publish to npm
         run: npm publish --access public
 
+      # Publish to GitHub Packages as well
+      # This makes the package appear in the repository's "Packages" sidebar
+      - name: Setup Node.js for GitHub Packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@hdn-james"
+
+      - name: Publish to GitHub Packages
+        run: |
+          # Create a scoped package.json for GitHub Packages
+          # GitHub Packages requires scoped package names
+          node -e "
+            const pkg = require('./package.json');
+            pkg.name = '@hdn-james/react-3d-flipbook';
+            pkg.publishConfig = { registry: 'https://npm.pkg.github.com' };
+            require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));
+          "
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true # Don't fail the workflow if GitHub Packages publish fails
+
       - name: Summary
         run: |
           echo "## 🎉 Publish Summary" >> $GITHUB_STEP_SUMMARY
@@ -635,6 +659,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 View on npm" >> $GITHUB_STEP_SUMMARY
           echo "[https://www.npmjs.com/package/react-3d-flipbook](https://www.npmjs.com/package/react-3d-flipbook)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 View on GitHub Packages" >> $GITHUB_STEP_SUMMARY
+          echo "[https://github.com/hdn-james/react-flipbook/packages](https://github.com/hdn-james/react-flipbook/packages)" >> $GITHUB_STEP_SUMMARY
 
   # =============================================================================
   # Job 4: Deploy Storybook to GitHub Pages (after npm publish)
